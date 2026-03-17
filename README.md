@@ -28,6 +28,19 @@ Antes de começar, garanta que você tem instalado:
 
 > **Importante:** O ARCore **não funciona em emuladores**. É obrigatório um dispositivo físico Android com suporte a ARCore.
 
+### Windows: Modo de Desenvolvedor (symlinks)
+
+No Windows, plugins do Flutter precisam de **suporte a symlinks**. Ative o **Modo de Desenvolvedor**:
+
+1. Abra as configurações de desenvolvedor:
+   ```powershell
+   start ms-settings:developers
+   ```
+2. Em **Modo de desenvolvedor**, ative a opção.
+3. Reinicie o terminal e rode `flutter pub get` novamente.
+
+Se o comando `flutter` não for reconhecido, verifique se o Flutter está no PATH ou use o terminal integrado do Android Studio/VS Code após instalar o Flutter.
+
 ---
 
 ## Como instalar e rodar
