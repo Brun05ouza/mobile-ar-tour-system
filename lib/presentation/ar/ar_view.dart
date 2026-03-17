@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../data/models/point_model.dart';
 import '../../data/services/points_service.dart';
 import 'ar_overlay_card.dart';
@@ -18,6 +19,7 @@ class _ArViewState extends State<ArView> {
   PointModel? _pontoDetetado;
   bool _scanning = false;
   String _statusMsg = 'Pronto para escanear';
+  bool _cameraDenied = false;
 
   @override
   void initState() {
@@ -28,6 +30,24 @@ class _ArViewState extends State<ArView> {
 
   Future<void> _iniciarScanner() async {
     if (_scanning) return;
+
+    // Solicita permissão de câmera antes de abrir o AR
+    final status = await Permission.camera.status;
+    if (!status.isGranted) {
+      final result = await Permission.camera.request();
+      if (!result.isGranted) {
+        if (!mounted) return;
+        setState(() {
+          _cameraDenied = true;
+          _statusMsg = result.isPermanentlyDenied
+              ? 'Permissão da câmera negada. Ative nas configurações do app para usar o AR.'
+              : 'É necessário permitir o uso da câmera para o AR funcionar.';
+        });
+        return;
+      }
+    }
+    _cameraDenied = false;
+
     setState(() {
       _scanning = true;
       _pontoDetetado = null;
@@ -137,7 +157,7 @@ class _ArViewState extends State<ArView> {
                   const SizedBox(height: 32),
 
                   // Botão de escanear (aparece quando não está escaneando)
-                  if (!_scanning)
+                  if (!_scanning) ...[
                     ElevatedButton.icon(
                       onPressed: _iniciarScanner,
                       icon: const Icon(Icons.camera_alt),
@@ -155,6 +175,20 @@ class _ArViewState extends State<ArView> {
                             borderRadius: BorderRadius.circular(14)),
                       ),
                     ),
+                    if (_cameraDenied) ...[
+                      const SizedBox(height: 16),
+                      TextButton.icon(
+                        onPressed: () async {
+                          await openAppSettings();
+                        },
+                        icon: const Icon(Icons.settings, size: 20),
+                        label: const Text('Abrir configurações'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.teal,
+                        ),
+                      ),
+                    ],
+                  ],
                 ],
               ),
             ),
