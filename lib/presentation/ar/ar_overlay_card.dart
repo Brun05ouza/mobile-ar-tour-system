@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/point_model.dart';
+import '../../data/providers/user_prefs_provider.dart';
 import '../details/details_screen.dart';
 
-class ArOverlayCard extends StatefulWidget {
+class ArOverlayCard extends ConsumerStatefulWidget {
   final PointModel point;
   final VoidCallback onClose;
 
@@ -13,10 +15,10 @@ class ArOverlayCard extends StatefulWidget {
   });
 
   @override
-  State<ArOverlayCard> createState() => _ArOverlayCardState();
+  ConsumerState<ArOverlayCard> createState() => _ArOverlayCardState();
 }
 
-class _ArOverlayCardState extends State<ArOverlayCard>
+class _ArOverlayCardState extends ConsumerState<ArOverlayCard>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<Offset> _slideAnim;
@@ -35,6 +37,11 @@ class _ArOverlayCardState extends State<ArOverlayCard>
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
     _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _controller.forward();
+
+    // Marca automaticamente como visitado ao detectar pelo AR
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(visitedProvider.notifier).markVisited(widget.point.id);
+    });
   }
 
   @override
@@ -50,6 +57,8 @@ class _ArOverlayCardState extends State<ArOverlayCard>
 
   @override
   Widget build(BuildContext context) {
+    final isFavorite = ref.watch(favoritesProvider).contains(widget.point.id);
+
     return FadeTransition(
       opacity: _fadeAnim,
       child: SlideTransition(
@@ -74,7 +83,7 @@ class _ArOverlayCardState extends State<ArOverlayCard>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header
+                // ── Header ──────────────────────────────────────────────────
                 Row(
                   children: [
                     Container(
@@ -94,22 +103,53 @@ class _ArOverlayCardState extends State<ArOverlayCard>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: Colors.teal.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'PONTO DETECTADO',
-                              style: TextStyle(
-                                color: Colors.tealAccent.withOpacity(0.9),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.2,
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.teal.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  'PONTO DETECTADO',
+                                  style: TextStyle(
+                                    color: Colors.tealAccent.withOpacity(0.9),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 6),
+                              // Badge visitado automático
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.check_circle,
+                                        size: 10, color: Colors.greenAccent),
+                                    SizedBox(width: 3),
+                                    Text(
+                                      'VISITADO',
+                                      style: TextStyle(
+                                        color: Colors.greenAccent,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 1.0,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -123,10 +163,28 @@ class _ArOverlayCardState extends State<ArOverlayCard>
                         ],
                       ),
                     ),
+                    // Botão favoritar direto do overlay
+                    IconButton(
+                      onPressed: () =>
+                          ref.read(favoritesProvider.notifier).toggle(widget.point.id),
+                      icon: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 250),
+                        transitionBuilder: (child, anim) =>
+                            ScaleTransition(scale: anim, child: child),
+                        child: Icon(
+                          isFavorite ? Icons.favorite : Icons.favorite_border,
+                          key: ValueKey(isFavorite),
+                          color: isFavorite ? Colors.pinkAccent : Colors.white38,
+                          size: 22,
+                        ),
+                      ),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                    const SizedBox(width: 8),
                     IconButton(
                       onPressed: _fechar,
-                      icon: const Icon(Icons.close,
-                          color: Colors.white54, size: 20),
+                      icon: const Icon(Icons.close, color: Colors.white54, size: 20),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),
@@ -134,16 +192,10 @@ class _ArOverlayCardState extends State<ArOverlayCard>
                 ),
 
                 const SizedBox(height: 14),
-
-                // Divisor
-                Container(
-                  height: 1,
-                  color: Colors.white.withOpacity(0.08),
-                ),
-
+                Container(height: 1, color: Colors.white.withOpacity(0.08)),
                 const SizedBox(height: 14),
 
-                // Descrição curta
+                // ── Descrição ────────────────────────────────────────────────
                 Text(
                   widget.point.description,
                   maxLines: 3,
@@ -157,7 +209,7 @@ class _ArOverlayCardState extends State<ArOverlayCard>
 
                 const SizedBox(height: 18),
 
-                // Botão Detalhes
+                // ── Botão Detalhes ───────────────────────────────────────────
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(

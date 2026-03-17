@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'data/models/point_model.dart';
+import 'data/services/user_prefs_service.dart';
 import 'presentation/home/home_screen.dart';
 
 void main() async {
@@ -9,6 +10,7 @@ void main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(PointModelAdapter());
   await Hive.openBox<PointModel>('points');
+  await UserPrefsService.openBoxes();
 
   runApp(const ProviderScope(child: MyApp()));
 }
