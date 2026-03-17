@@ -42,3 +42,8 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.ar:core:1.44.0")
+}
