@@ -1,0 +1,26 @@
+[
+    {
+      "id": "point_001",
+      "name": "Ponto 1 - Entrada",
+      "description": "Ponto de entrada do tour",
+      "imageReference": "marker_01",
+      "latitude": -22.9068,
+      "longitude": -43.1729
+    },
+    {
+      "id": "point_002",
+      "name": "Ponto 2 - Centro",
+      "description": "Ponto central do tour",
+      "imageReference": "marker_02",
+      "latitude": -22.9080,
+      "longitude": -43.1750
+    },
+    {
+      "id": "point_003",
+      "name": "Ponto 3 - Final",
+      "description": "Último ponto do tour",
+      "imageReference": "marker_03",
+      "latitude": -22.9100,
+      "longitude": -43.1800
+    }
+  ]
