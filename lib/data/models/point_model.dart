@@ -25,6 +25,9 @@ class PointModel extends HiveObject {
   @HiveField(6)
   final String details;
 
+  @HiveField(7)
+  final String imagePath;
+
   PointModel({
     required this.id,
     required this.name,
@@ -33,6 +36,7 @@ class PointModel extends HiveObject {
     required this.latitude,
     required this.longitude,
     this.details = '',
+    this.imagePath = '',
   });
 
   factory PointModel.fromJson(Map<String, dynamic> json) => PointModel(
@@ -43,5 +47,6 @@ class PointModel extends HiveObject {
         latitude: (json['latitude'] as num).toDouble(),
         longitude: (json['longitude'] as num).toDouble(),
         details: json['details'] ?? '',
+        imagePath: json['imagePath'] ?? '',
       );
 }

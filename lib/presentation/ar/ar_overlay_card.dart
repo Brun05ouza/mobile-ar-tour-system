@@ -103,7 +103,9 @@ class _ArOverlayCardState extends ConsumerState<ArOverlayCard>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(
@@ -122,8 +124,6 @@ class _ArOverlayCardState extends ConsumerState<ArOverlayCard>
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 6),
-                              // Badge visitado automático
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 3),

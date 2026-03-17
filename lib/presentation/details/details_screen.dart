@@ -50,25 +50,71 @@ class DetailsScreen extends ConsumerWidget {
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
+                  shadows: [Shadow(blurRadius: 8, color: Colors.black87)],
                 ),
               ),
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: isVisited
-                        ? [const Color(0xFF1B5E20), const Color(0xFF004D40)]
-                        : [const Color(0xFF00897B), const Color(0xFF004D40)],
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (point.imagePath.isNotEmpty)
+                    Image.asset(
+                      point.imagePath,
+                      fit: BoxFit.cover,
+                    )
+                  else
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: isVisited
+                              ? [const Color(0xFF1B5E20), const Color(0xFF004D40)]
+                              : [const Color(0xFF00897B), const Color(0xFF004D40)],
+                        ),
+                      ),
+                    ),
+                  // gradiente escuro na parte de baixo para o título ficar legível
+                  Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.transparent, Colors.black87],
+                        stops: [0.4, 1.0],
+                      ),
+                    ),
                   ),
-                ),
-                child: Center(
-                  child: Icon(
-                    isVisited ? Icons.check_circle_outline : Icons.place,
-                    size: 80,
-                    color: Colors.white24,
-                  ),
-                ),
+                  if (isVisited)
+                    Positioned(
+                      top: 48,
+                      right: 16,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.85),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_circle,
+                                size: 14, color: Colors.white),
+                            SizedBox(width: 4),
+                            Text(
+                              'VISITADO',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),

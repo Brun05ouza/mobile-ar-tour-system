@@ -208,36 +208,70 @@ class _PointCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Ícone do ponto com badge de visitado
+            // Thumbnail do ponto com badge de favorito/visitado
             Stack(
               clipBehavior: Clip.none,
               children: [
                 Container(
-                  width: 48,
-                  height: 48,
+                  width: 64,
+                  height: 64,
                   decoration: BoxDecoration(
-                    color: isVisited
-                        ? Colors.green.withOpacity(0.2)
-                        : Colors.teal.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      isVisited ? Icons.check_circle : Icons.place,
-                      color: isVisited ? Colors.greenAccent : Colors.tealAccent,
-                      size: 24,
+                    border: Border.all(
+                      color: isVisited
+                          ? Colors.green.withOpacity(0.5)
+                          : Colors.white.withOpacity(0.1),
+                      width: 2,
                     ),
                   ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: point.imagePath.isNotEmpty
+                        ? Image.asset(
+                            point.imagePath,
+                            fit: BoxFit.cover,
+                          )
+                        : Container(
+                            color: Colors.teal.withOpacity(0.2),
+                            child: Icon(
+                              Icons.place,
+                              color: Colors.tealAccent,
+                              size: 28,
+                            ),
+                          ),
+                  ),
                 ),
+                if (isVisited)
+                  Positioned(
+                    bottom: -4,
+                    right: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                            color: const Color(0xFF0F1117), width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.check,
+                        color: Colors.white,
+                        size: 10,
+                      ),
+                    ),
+                  ),
                 if (isFavorite)
                   Positioned(
                     top: -4,
                     right: -4,
                     child: Container(
                       padding: const EdgeInsets.all(3),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF0F1117),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F1117),
                         shape: BoxShape.circle,
+                        border: Border.all(
+                            color: Colors.pinkAccent.withOpacity(0.5),
+                            width: 1),
                       ),
                       child: const Icon(
                         Icons.favorite,
