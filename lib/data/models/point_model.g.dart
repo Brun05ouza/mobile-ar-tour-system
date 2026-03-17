@@ -23,13 +23,14 @@ class PointModelAdapter extends TypeAdapter<PointModel> {
       imageReference: fields[3] as String,
       latitude: fields[4] as double,
       longitude: fields[5] as double,
+      details: fields[6] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, PointModel obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,7 +42,9 @@ class PointModelAdapter extends TypeAdapter<PointModel> {
       ..writeByte(4)
       ..write(obj.latitude)
       ..writeByte(5)
-      ..write(obj.longitude);
+      ..write(obj.longitude)
+      ..writeByte(6)
+      ..write(obj.details);
   }
 
   @override
