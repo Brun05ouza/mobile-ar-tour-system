@@ -7,35 +7,35 @@ import com.brunoouza.ar_tour.models.RecognitionResultStatus
 import io.flutter.plugin.common.EventChannel
 
 /**
- * Despacha eventos do pipeline de reconhecimento para o Flutter via [EventChannel].
+ * Singleton que despacha eventos do pipeline de reconhecimento para o Flutter.
  *
- * Centraliza a serialização dos eventos e garante que todos os envios
- * aconteçam na thread principal (main thread).
+ * O sink é gerenciado pelo StreamHandler registrado no MainActivity.
+ * A HybridArActivity apenas chama os métodos dispatch* — não precisa conhecer
+ * o FlutterEngine nem configurar o EventChannel diretamente.
  *
- * Uso:
- *   1. Criar instância com o [EventChannel] configurado.
- *   2. Implementar [EventChannel.StreamHandler] e passar o sink via [setSink].
- *   3. Chamar os métodos `dispatch*` conforme os eventos ocorrem.
- *   4. Chamar [clearSink] ao encerrar o stream.
+ * Fluxo:
+ *   MainActivity.configureFlutterEngine → EventChannel.setStreamHandler
+ *   onListen → RecognitionEventDispatcher.setSink(events)
+ *   HybridArActivity → dispatch*() → sink.success(data)
+ *   onCancel → RecognitionEventDispatcher.clearSink()
  */
-class RecognitionEventDispatcher {
+object RecognitionEventDispatcher {
 
-    companion object {
-        private const val TAG = "EventDispatcher"
-    }
+    private const val TAG = "EventDispatcher"
 
     @Volatile
     private var eventSink: EventChannel.EventSink? = null
 
-    /** Define o sink ativo do EventChannel. */
+    /** Define o sink ativo — chamado pelo StreamHandler em onListen. */
     fun setSink(sink: EventChannel.EventSink?) {
         eventSink = sink
         Log.d(TAG, if (sink != null) "EventSink conectado" else "EventSink desconectado")
     }
 
-    /** Remove o sink (chamado em onCancel do StreamHandler). */
+    /** Remove o sink — chamado pelo StreamHandler em onCancel. */
     fun clearSink() {
         eventSink = null
+        Log.d(TAG, "EventSink limpo")
     }
 
     // ── Métodos de despacho ───────────────────────────────────────────────────
@@ -51,7 +51,7 @@ class RecognitionEventDispatcher {
         Log.d(TAG, "Marker detectado: pointId=$pointId markerRef=$markerRef conf=$confidence")
     }
 
-    /** Resultado de fusão despachado com base no [RecognitionResultStatus]. */
+    /** Despacha resultado baseado no status da fusão. */
     fun dispatchResult(result: RecognitionResult) {
         when (result.status) {
             RecognitionResultStatus.CONFIRMED ->
@@ -62,7 +62,7 @@ class RecognitionEventDispatcher {
         }
     }
 
-    /** Reconhecimento confirmado automaticamente. */
+    /** Reconhecimento confirmado automaticamente (score >= THRESHOLD_AUTO). */
     fun dispatchConfirmed(pointId: String, pointName: String, score: Float, source: String) {
         send(mapOf(
             "type"      to RecognitionConstants.EVENT_CONFIRMED,
@@ -74,7 +74,7 @@ class RecognitionEventDispatcher {
         Log.d(TAG, "CONFIRMADO: $pointId (score=$score, src=$source)")
     }
 
-    /** Sugestão para o usuário confirmar. */
+    /** Sugestão para o usuário confirmar (score entre THRESHOLD_SUGGEST e THRESHOLD_AUTO). */
     fun dispatchSuggestion(pointId: String, pointName: String, score: Float) {
         send(mapOf(
             "type"      to RecognitionConstants.EVENT_SUGGESTION,
@@ -85,7 +85,7 @@ class RecognitionEventDispatcher {
         Log.d(TAG, "Sugestão: $pointId (score=$score)")
     }
 
-    /** Reconhecimento perdido (marker saiu do campo de visão). */
+    /** Reconhecimento perdido — marker saiu do campo de visão. */
     fun dispatchLost(pointId: String) {
         send(mapOf(
             "type"    to RecognitionConstants.EVENT_LOST,
@@ -94,7 +94,7 @@ class RecognitionEventDispatcher {
         Log.d(TAG, "Reconhecimento perdido: $pointId")
     }
 
-    /** Atualização de localização. */
+    /** Atualização de localização GPS. */
     fun dispatchLocationUpdate(lat: Double, lon: Double, accuracy: Float) {
         send(mapOf(
             "type"     to RecognitionConstants.EVENT_LOCATION_UPDATE,
@@ -104,11 +104,8 @@ class RecognitionEventDispatcher {
         ))
     }
 
-    /** Informações de debug do pipeline (visible no RecognitionDebugPanel). */
-    fun dispatchDebug(
-        message: String,
-        candidates: List<RecognitionCandidate> = emptyList()
-    ) {
+    /** Informações de debug do pipeline (visível no RecognitionDebugPanel). */
+    fun dispatchDebug(message: String, candidates: List<RecognitionCandidate> = emptyList()) {
         send(mapOf(
             "type"       to RecognitionConstants.EVENT_DEBUG,
             "message"    to message,
@@ -116,7 +113,7 @@ class RecognitionEventDispatcher {
         ))
     }
 
-    // ── Envio seguro ──────────────────────────────────────────────────────────
+    // ── Envio seguro (main thread safe) ──────────────────────────────────────
 
     private fun send(data: Map<String, Any?>) {
         val sink = eventSink ?: run {

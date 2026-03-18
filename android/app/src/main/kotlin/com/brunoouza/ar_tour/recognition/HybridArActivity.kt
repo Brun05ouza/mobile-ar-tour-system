@@ -25,9 +25,6 @@ import com.google.ar.core.Config
 import com.google.ar.core.Session
 import com.google.ar.core.TrackingState
 import com.google.ar.core.exceptions.CameraNotAvailableException
-import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.plugin.common.EventChannel
-import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -59,6 +56,7 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     companion object {
         private const val TAG = "HybridArActivity"
         private const val REQUEST_LOCATION = 2001
+        private const val REQUEST_CAMERA   = 2002
 
         // Mesma estrutura do ArImageTrackingActivity original:
         // arquivo → Pair(imageReference, larguraFísicaEmMetros)
@@ -82,9 +80,9 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     private lateinit var locationProvider: CurrentLocationProvider
 
     // ── Reconhecimento ────────────────────────────────────────────────────────
-    private val eventDispatcher = RecognitionEventDispatcher()
-    private val visualManager   = VisualRecognitionManager()
-    private val coroutineScope  = CoroutineScope(Dispatchers.Default)
+    // eventDispatcher é singleton — o sink é gerenciado pelo MainActivity
+    private val visualManager  = VisualRecognitionManager()
+    private val coroutineScope = CoroutineScope(Dispatchers.Default)
 
     /** Candidatos filtrados pela localização atual. */
     @Volatile
@@ -101,23 +99,6 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     // ── Todos os pontos carregados do JSON ────────────────────────────────────
     private var allPoints: List<PointData> = emptyList()
 
-    // ── Flutter EventChannel ──────────────────────────────────────────────────
-
-    /** Configurado pelo MainActivity antes de iniciar a Activity. */
-    var flutterEngine: FlutterEngine? = null
-
-    private val streamHandler = object : EventChannel.StreamHandler {
-        override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
-            eventDispatcher.setSink(events)
-            Log.d(TAG, "EventChannel: listener conectado")
-        }
-
-        override fun onCancel(arguments: Any?) {
-            eventDispatcher.clearSink()
-            Log.d(TAG, "EventChannel: listener cancelado")
-        }
-    }
-
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -131,18 +112,28 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         locationProvider = CurrentLocationProvider(this)
 
         setupGlSurface()
-        setupEventChannel()
         loadPointsFromAssets()
+        requestCameraPermissionIfNeeded()
         requestLocationPermissionIfNeeded()
     }
 
     override fun onResume() {
         super.onResume()
 
+        // Não inicializa ARCore sem permissão de câmera
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+            != PackageManager.PERMISSION_GRANTED) {
+            Log.w(TAG, "Câmera sem permissão — aguardando concessão")
+            runOnUiThread { statusText.text = "Permissão de câmera necessária" }
+            return
+        }
+
         if (session == null) {
             try {
-                if (!ArCoreApk.getInstance().checkAvailability(this).isSupported) {
+                val availability = ArCoreApk.getInstance().checkAvailability(this)
+                if (!availability.isSupported) {
                     runOnUiThread { statusText.text = "ARCore não suportado neste dispositivo" }
+                    Log.e(TAG, "ARCore não suportado: $availability")
                     return
                 }
                 val newSession = Session(this)
@@ -153,8 +144,9 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 }
                 newSession.configure(config)
                 session = newSession
+                Log.d(TAG, "Sessão ARCore criada com sucesso")
             } catch (e: Exception) {
-                Log.e(TAG, "Erro ao criar sessão ARCore", e)
+                Log.e(TAG, "Erro ao criar sessão ARCore: ${e.javaClass.simpleName} — ${e.message}")
                 runOnUiThread { statusText.text = "Erro AR: ${e.message}" }
                 return
             }
@@ -163,8 +155,9 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         try {
             session?.resume()
         } catch (e: CameraNotAvailableException) {
-            Log.e(TAG, "Câmera não disponível", e)
+            Log.e(TAG, "Câmera não disponível ao resumir sessão", e)
             session = null
+            runOnUiThread { statusText.text = "Câmera não disponível — feche outros apps" }
             return
         }
 
@@ -172,6 +165,7 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         displayRotationHelper.onResume()
         locationProvider.start()
         runOnUiThread { statusText.text = "Analisando ambiente..." }
+        Log.d(TAG, "onResume: sessão AR ativa")
     }
 
     override fun onPause() {
@@ -187,7 +181,6 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         session?.close()
         session = null
         coroutineScope.cancel()
-        eventDispatcher.clearSink()
     }
 
     // ── GLSurfaceView.Renderer ────────────────────────────────────────────────
@@ -255,7 +248,7 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             val candidate = currentCandidates.find { it.imageReference == ref }
             if (candidate != null) {
                 Log.d(TAG, "Marker perdido: $ref")
-                eventDispatcher.dispatchLost(candidate.pointId)
+                RecognitionEventDispatcher.dispatchLost(candidate.pointId)
             }
         }
 
@@ -310,7 +303,7 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             }
 
         // Envia evento de marker imediatamente (antes da fusão)
-        eventDispatcher.dispatchMarkerDetected(candidate.pointId, markerRef, 1.0f)
+        RecognitionEventDispatcher.dispatchMarkerDetected(candidate.pointId, markerRef, 1.0f)
 
         // Atualiza markerScore e executa fusão
         val withMarker = candidate.copy(markerScore = 1.0f)
@@ -321,7 +314,7 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 "score=${result.confidence} status=${result.status} src=${result.source}")
 
         // Debug para o Flutter
-        eventDispatcher.dispatchDebug(
+        RecognitionEventDispatcher.dispatchDebug(
             "Marker '${markerRef}' → ${candidate.pointId} | " +
             "score=${result.confidence} | status=${result.status}",
             listOf(withMarker.copy(finalScore = result.confidence))
@@ -333,7 +326,7 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             if (result.status == RecognitionResultStatus.CONFIRMED) {
                 confirmedPoints.add(candidate.pointId)
             }
-            eventDispatcher.dispatchResult(result)
+            RecognitionEventDispatcher.dispatchResult(result)
         }
     }
 
@@ -350,11 +343,11 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             if (best.status == RecognitionResultStatus.CONFIRMED) {
                 confirmedPoints.add(best.pointId)
             }
-            eventDispatcher.dispatchResult(best)
+            RecognitionEventDispatcher.dispatchResult(best)
         }
 
         // Envia debug com todos os candidatos
-        eventDispatcher.dispatchDebug(
+        RecognitionEventDispatcher.dispatchDebug(
             "Fusão: ${currentCandidates.size} candidatos | melhor=${best.pointId} score=${best.confidence}",
             currentCandidates.map { it.copy(finalScore = RecognitionFusionManager.fuse(it).confidence) }
         )
@@ -368,13 +361,6 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         surfaceView.setEGLConfigChooser(8, 8, 8, 8, 16, 0)
         surfaceView.setRenderer(this)
         surfaceView.renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
-    }
-
-    private fun setupEventChannel() {
-        // Obtém o FlutterEngine do processo Flutter (injetado pelo MainActivity)
-        val engine = flutterEngine ?: return
-        EventChannel(engine.dartExecutor.binaryMessenger, RecognitionConstants.EVENT_CHANNEL)
-            .setStreamHandler(streamHandler)
     }
 
     private fun buildImageDatabase(session: Session): AugmentedImageDatabase {
@@ -430,7 +416,7 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         // Atualiza candidatos a cada nova posição
         locationProvider.onLocationUpdate = { loc ->
             Log.d(TAG, "Localização atualizada → re-filtrando candidatos")
-            eventDispatcher.dispatchLocationUpdate(loc.latitude, loc.longitude, loc.accuracy)
+            RecognitionEventDispatcher.dispatchLocationUpdate(loc.latitude, loc.longitude, loc.accuracy)
             updateCandidates()
         }
     }
@@ -442,7 +428,7 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         currentCandidates = candidates
 
         if (candidates.isNotEmpty()) {
-            eventDispatcher.dispatchDebug(
+            RecognitionEventDispatcher.dispatchDebug(
                 "Candidatos próximos: ${candidates.joinToString { it.pointName }}",
                 candidates
             )
@@ -451,6 +437,19 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             }
         } else {
             runOnUiThread { statusText.text = "Nenhum local próximo. Aponte para um marker." }
+        }
+    }
+
+    /** Solicita permissão de câmera se necessário (obrigatória para ARCore). */
+    private fun requestCameraPermissionIfNeeded() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+            != PackageManager.PERMISSION_GRANTED) {
+            Log.d(TAG, "Solicitando permissão de câmera")
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.CAMERA),
+                REQUEST_CAMERA
+            )
         }
     }
 
@@ -471,13 +470,28 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         requestCode: Int, permissions: Array<out String>, grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_LOCATION) {
-            if (grantResults.isNotEmpty() &&
-                grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                locationProvider.start()
-                Log.d(TAG, "Permissão de localização concedida")
-            } else {
-                Log.w(TAG, "Permissão de localização negada — continuando só com marker")
+        when (requestCode) {
+            REQUEST_CAMERA -> {
+                if (grantResults.isNotEmpty() &&
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Log.d(TAG, "Permissão de câmera concedida — reiniciando AR")
+                    // Chama onResume manualmente para inicializar a sessão ARCore agora
+                    onResume()
+                } else {
+                    Log.e(TAG, "Permissão de câmera negada — AR não pode funcionar")
+                    runOnUiThread {
+                        statusText.text = "Permissão de câmera negada. Ative nas configurações."
+                    }
+                }
+            }
+            REQUEST_LOCATION -> {
+                if (grantResults.isNotEmpty() &&
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    locationProvider.start()
+                    Log.d(TAG, "Permissão de localização concedida")
+                } else {
+                    Log.w(TAG, "Permissão de localização negada — continuando só com marker")
+                }
             }
         }
     }

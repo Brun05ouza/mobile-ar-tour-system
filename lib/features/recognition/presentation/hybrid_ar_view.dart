@@ -57,14 +57,15 @@ class _HybridArViewState extends ConsumerState<HybridArView> {
       if (next.status == RecognitionStatus.confirmed &&
           next.confirmedPoint != null &&
           prev?.status != RecognitionStatus.confirmed) {
+        final point = next.confirmedPoint!;
         // Pequeno delay para a animação do card ser visível
         Future.delayed(const Duration(milliseconds: 600), () {
+          // Verifica mounted antes de usar context ou ref
           if (!mounted) return;
           Navigator.push(
             context,
             PageRouteBuilder(
-              pageBuilder: (_, __, ___) =>
-                  DetailsScreen(point: next.confirmedPoint!),
+              pageBuilder: (_, __, ___) => DetailsScreen(point: point),
               transitionDuration: const Duration(milliseconds: 350),
               transitionsBuilder: (_, anim, __, child) =>
                   FadeTransition(opacity: anim, child: child),
