@@ -46,4 +46,8 @@ flutter {
 dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.ar:core:1.44.0")
+    // FusedLocationProvider para reconhecimento híbrido por geolocalização
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+    // Coroutines para pipeline visual assíncrono
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 }

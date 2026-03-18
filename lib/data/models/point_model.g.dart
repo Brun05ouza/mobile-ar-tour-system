@@ -24,13 +24,20 @@ class PointModelAdapter extends TypeAdapter<PointModel> {
       latitude: fields[4] as double,
       longitude: fields[5] as double,
       details: fields[6] as String,
+      imagePath: fields[7] as String,
+      category: fields[8] as String,
+      tags: (fields[9] as List).cast<String>(),
+      recognitionImages: (fields[10] as List).cast<String>(),
+      recognitionThreshold: fields[11] as double,
+      thumbnailAsset: fields[12] as String,
+      audioAsset: fields[13] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, PointModel obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +51,21 @@ class PointModelAdapter extends TypeAdapter<PointModel> {
       ..writeByte(5)
       ..write(obj.longitude)
       ..writeByte(6)
-      ..write(obj.details);
+      ..write(obj.details)
+      ..writeByte(7)
+      ..write(obj.imagePath)
+      ..writeByte(8)
+      ..write(obj.category)
+      ..writeByte(9)
+      ..write(obj.tags)
+      ..writeByte(10)
+      ..write(obj.recognitionImages)
+      ..writeByte(11)
+      ..write(obj.recognitionThreshold)
+      ..writeByte(12)
+      ..write(obj.thumbnailAsset)
+      ..writeByte(13)
+      ..write(obj.audioAsset);
   }
 
   @override

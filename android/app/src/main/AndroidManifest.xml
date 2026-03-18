@@ -6,6 +6,10 @@
 <uses-permission android:name="android.permission.INTERNET" />
 <uses-feature android:name="android.hardware.camera.ar" android:required="true"/>
 
+<!-- Localização — necessária para o reconhecimento híbrido por proximidade -->
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
     <application
         android:label="ar_tour"
         android:name="${applicationName}"
@@ -32,9 +36,16 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <!-- Activity nativa de Image Tracking com ARCore -->
+        <!-- Activity legada de Image Tracking (preservada sem alteração) -->
         <activity
             android:name=".ArImageTrackingActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.NoActionBar" />
+
+        <!-- Activity de reconhecimento híbrido contínuo (nova) -->
+        <activity
+            android:name=".recognition.HybridArActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.AppCompat.NoActionBar" />

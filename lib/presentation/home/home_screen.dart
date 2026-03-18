@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../ar/ar_view.dart';
 import '../list/points_list_screen.dart';
+import '../../features/recognition/presentation/hybrid_ar_view.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,7 +16,7 @@ class _HomeScreenState extends State<HomeScreen>
   late final List<Animation<double>> _fades;
   late final List<Animation<Offset>> _slides;
 
-  static const int _itemCount = 4; // logo, title, card1, card2
+  static const int _itemCount = 5; // logo, title, card1, card2, card3
 
   @override
   void initState() {
@@ -138,9 +139,27 @@ class _HomeScreenState extends State<HomeScreen>
 
               const SizedBox(height: 16),
 
-              // Card Lista
+              // Card AR Híbrido (novo sistema de reconhecimento)
               _animated(
                 3,
+                _ActionCard(
+                  icon: Icons.radar,
+                  label: 'AR Híbrido',
+                  sublabel:
+                      'Reconhecimento automático por marker, localização e visão',
+                  color: const Color(0xFF26A69A),
+                  onTap: () => Navigator.push(
+                    context,
+                    _fadeRoute(const HybridArView()),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Card Lista
+              _animated(
+                4,
                 _ActionCard(
                   icon: Icons.list_alt_rounded,
                   label: 'Pontos do Tour',

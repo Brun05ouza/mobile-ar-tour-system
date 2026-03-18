@@ -1,0 +1,50 @@
+[
+  {
+    "id": "point_001",
+    "name": "Coca-Cola",
+    "description": "Marca icônica reconhecida mundialmente, presente na cultura brasileira há décadas.",
+    "details": "A Coca-Cola é uma das marcas mais reconhecidas do mundo. No Brasil, está presente desde 1942 e faz parte da cultura e cotidiano dos brasileiros. Este ponto representa a interseção entre cultura pop e história do consumo no país.",
+    "imageReference": "marker_01",
+    "imagePath": "assets/images/coca-cola.png",
+    "latitude": -22.9068,
+    "longitude": -43.1729,
+    "category": "cultura",
+    "tags": ["bebida", "brasil", "cultura-pop"],
+    "recognitionImages": [],
+    "recognitionThreshold": 0.75,
+    "thumbnailAsset": "assets/images/coca-cola.png",
+    "audioAsset": ""
+  },
+  {
+    "id": "point_002",
+    "name": "Cristo Redentor",
+    "description": "Uma das Sete Maravilhas do Mundo Moderno, símbolo do Rio de Janeiro e do Brasil.",
+    "details": "O Cristo Redentor é uma estátua de Jesus Cristo localizada no cume do morro do Corcovado, no Rio de Janeiro. Com 38 metros de altura (incluindo o pedestal de 8 metros), foi eleito uma das Sete Maravilhas do Mundo Moderno em 2007. Inaugurado em 1931, é o maior monumento Art Déco do mundo e recebe cerca de 2 milhões de visitantes por ano.",
+    "imageReference": "marker_02",
+    "imagePath": "assets/images/cristo-redentor.png",
+    "latitude": -22.9519,
+    "longitude": -43.2105,
+    "category": "monumento",
+    "tags": ["rio-de-janeiro", "maravilha-do-mundo", "religioso", "art-deco"],
+    "recognitionImages": [],
+    "recognitionThreshold": 0.75,
+    "thumbnailAsset": "assets/images/cristo-redentor.png",
+    "audioAsset": ""
+  },
+  {
+    "id": "point_003",
+    "name": "Pão de Açúcar",
+    "description": "Cartão-postal do Rio de Janeiro, com vista panorâmica da Baía de Guanabara.",
+    "details": "O Pão de Açúcar é um pico localizado na entrada da Baía de Guanabara, no Rio de Janeiro. Com 395 metros de altitude, é acessado por um famoso bondinho (teleférico) e oferece uma das vistas mais espetaculares do mundo, incluindo a Baía de Guanabara, o Cristo Redentor e as praias de Copacabana e Ipanema. É um dos pontos turísticos mais visitados do Brasil.",
+    "imageReference": "marker_03",
+    "imagePath": "assets/images/pao-de-acucar.png",
+    "latitude": -22.9489,
+    "longitude": -43.1553,
+    "category": "natureza",
+    "tags": ["rio-de-janeiro", "bondinho", "mirante", "natureza"],
+    "recognitionImages": [],
+    "recognitionThreshold": 0.75,
+    "thumbnailAsset": "assets/images/pao-de-acucar.png",
+    "audioAsset": ""
+  }
+]

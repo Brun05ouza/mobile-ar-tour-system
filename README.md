@@ -1,281 +1,505 @@
-# AR Tour System
+# AR Tour System — Guia Turístico com Realidade Aumentada
 
-Aplicativo de turismo com **Realidade Aumentada** desenvolvido em Flutter + ARCore. Aponte a câmera para imagens de pontos turísticos cadastrados e o app exibe informações detalhadas sobre o local.
-
----
-
-## Funcionalidades
-
-- Reconhecimento de imagens de pontos turísticos via ARCore Image Tracking
-- Overlay animado com nome e descrição ao detectar uma imagem
-- Tela de detalhes completa de cada ponto turístico
-- Lista de todos os pontos do tour
-- Persistência local com Hive
-- Gerenciamento de estado com Riverpod
+App Android de guia turístico com **reconhecimento híbrido contextual** baseado em ARCore, geolocalização e comparação visual.
 
 ---
 
-## Pré-requisitos
+## Sumário
 
-Antes de começar, garanta que você tem instalado:
+1. [Visão Geral](#visão-geral)
+2. [Arquitetura Híbrida](#arquitetura-híbrida)
+3. [Fluxo de Decisão](#fluxo-de-decisão)
+4. [Pesos e Thresholds Configuráveis](#pesos-e-thresholds-configuráveis)
+5. [Instalação e Configuração](#instalação-e-configuração)
+6. [Configuração Android](#configuração-android)
+7. [Como Adicionar Novos Pontos](#como-adicionar-novos-pontos)
+8. [Como Adicionar Imagens de Reconhecimento](#como-adicionar-imagens-de-reconhecimento)
+9. [Como Calibrar Thresholds](#como-calibrar-thresholds)
+10. [Integração Flutter ↔ Android](#integração-flutter--android)
+11. [Estrutura do Projeto](#estrutura-do-projeto)
+12. [Integrando OpenCV (Fase Futura)](#integrando-opencv-fase-futura)
+13. [Troubleshooting](#troubleshooting)
 
-| Ferramenta | Versão mínima | Download |
+---
+
+## Visão Geral
+
+O app possui **dois modos de AR**:
+
+| Modo | Arquivo | Comportamento |
 |---|---|---|
-| Flutter SDK | 3.x | https://docs.flutter.dev/get-started/install |
-| Android Studio | Hedgehog+ | https://developer.android.com/studio |
-| Java (JDK) | 17 | https://adoptium.net |
-| Dispositivo Android | API 26+ com suporte a ARCore | https://developers.google.com/ar/devices |
+| **Legado** | `ArImageTrackingActivity.kt` | Detecta um marker ARCore e fecha a tela |
+| **Híbrido** | `HybridArActivity.kt` | Câmera contínua + stream de eventos + fusão de scores |
 
-> **Importante:** O ARCore **não funciona em emuladores**. É obrigatório um dispositivo físico Android com suporte a ARCore.
-
-### Windows: Modo de Desenvolvedor (symlinks)
-
-No Windows, plugins do Flutter precisam de **suporte a symlinks**. Ative o **Modo de Desenvolvedor**:
-
-1. Abra as configurações de desenvolvedor:
-   ```powershell
-   start ms-settings:developers
-   ```
-2. Em **Modo de desenvolvedor**, ative a opção.
-3. Reinicie o terminal e rode `flutter pub get` novamente.
-
-Se o comando `flutter` não for reconhecido, verifique se o Flutter está no PATH ou use o terminal integrado do Android Studio/VS Code após instalar o Flutter.
+O modo híbrido é acessado pelo botão **"AR Híbrido"** na HomeScreen.
 
 ---
 
-## Como instalar e rodar
+## Arquitetura Híbrida
 
-### 1. Clone o repositório
+```
+Flutter
+  └── HybridArView
+        └── RecognitionNotifier (Riverpod)
+              └── RecognitionChannel
+                    ├── EventChannel ← Android envia eventos
+                    └── MethodChannel → Flutter controla
+Android
+  └── HybridArActivity
+        ├── ARCore (AugmentedImageDatabase)  → markerScore
+        ├── CurrentLocationProvider          → posição GPS
+        ├── LocationScoringManager           → geoScore
+        ├── VisualRecognitionManager         → visualScore (placeholder)
+        ├── RecognitionFusionManager         → scoreFinal
+        └── RecognitionEventDispatcher       → EventChannel
+```
+
+### Módulos Android
+
+| Arquivo | Responsabilidade |
+|---|---|
+| `HybridArActivity.kt` | Activity principal — orquestra todos os managers |
+| `RecognitionConstants.kt` | Pesos, thresholds e nomes de canais centralizados |
+| `RecognitionFusionManager.kt` | Combina scores e decide a ação |
+| `RecognitionEventDispatcher.kt` | Serializa e envia eventos ao Flutter |
+| `LocationScoringManager.kt` | Calcula score de proximidade geográfica |
+| `CurrentLocationProvider.kt` | FusedLocationProvider com ciclo de vida gerenciado |
+| `VisualRecognitionManager.kt` | Pipeline ORB/OpenCV (placeholder) |
+| `RecognitionCandidate.kt` | Modelo de candidato com scores parciais |
+| `RecognitionResult.kt` | Resultado da fusão |
+
+### Módulos Flutter
+
+| Arquivo | Responsabilidade |
+|---|---|
+| `hybrid_ar_view.dart` | Tela principal do modo híbrido |
+| `recognition_notifier.dart` | Gerencia estado via Riverpod |
+| `recognition_channel.dart` | EventChannel + MethodChannel |
+| `recognition_state_model.dart` | Estado imutável do pipeline |
+| `location_service.dart` | Geolocalização e filtragem de proximidade |
+| `recognition_status_banner.dart` | Banner de status adaptativo |
+| `recognition_suggestion_card.dart` | Card de sugestão com ações |
+| `recognition_debug_panel.dart` | Painel de debug (apenas em kDebugMode) |
+
+---
+
+## Fluxo de Decisão
+
+```
+Câmera aberta
+    │
+    ├── GPS obtido → filtrar candidatos no raio de 300m
+    │
+    ├── [A cada frame] ARCore detecta marker?
+    │       Sim → markerScore = 1.0 para o candidato correspondente
+    │       Não → markerScore = 0.0
+    │
+    ├── [A cada 800ms] VisualRecognitionManager analisa frame
+    │       → visualScore por ORB/OpenCV (0.0 enquanto não integrado)
+    │
+    └── RecognitionFusionManager combina scores:
+            scoreFinal = marker * 0.55 + geo * 0.20 + visual * 0.25
+
+            scoreFinal >= 0.90 → CONFIRMADO (card abre automaticamente)
+            scoreFinal >= 0.65 → SUGESTÃO   (usuário confirma ou ignora)
+            scoreFinal <  0.65 → NENHUM     (pipeline continua)
+```
+
+### Regra especial — marker domina
+
+Quando `markerScore >= 0.9`, o campo `source` é definido como `MARKER_ONLY`.
+Mesmo assim, o `geoScore` ainda entra no cálculo para evitar falsos positivos
+em locais fisicamente distantes (ex: imagem impressa fora do local real).
+
+---
+
+## Pesos e Thresholds Configuráveis
+
+Edite `android/app/src/main/kotlin/com/brunoouza/ar_tour/recognition/RecognitionConstants.kt`:
+
+```kotlin
+// Pesos — devem somar 1.0
+const val WEIGHT_MARKER  = 0.55f   // ARCore AugmentedImages
+const val WEIGHT_GEO     = 0.20f   // Proximidade GPS
+const val WEIGHT_VISUAL  = 0.25f   // OpenCV ORB (placeholder)
+
+// Thresholds de decisão
+const val THRESHOLD_AUTO    = 0.90f  // Confirmação automática
+const val THRESHOLD_SUGGEST = 0.65f  // Sugestão ao usuário
+
+// Raio de busca de candidatos próximos
+const val GEO_RADIUS_METERS = 300.0
+
+// Intervalo entre análises visuais (ms)
+const val VISUAL_INTERVAL_MS = 800L
+```
+
+**Quando ajustar:**
+- Em ambiente indoor (museu): reduza `GEO_RADIUS_METERS` para 50–100m
+- Sem GPS confiável: aumente `WEIGHT_MARKER` para 0.75 e reduza `WEIGHT_GEO` para 0.05
+- Com OpenCV integrado: redistribua pesos (ex: marker=0.40, geo=0.20, visual=0.40)
+- Para evitar falsos positivos: aumente `THRESHOLD_AUTO` para 0.95
+
+---
+
+## Instalação e Configuração
+
+### Pré-requisitos
+
+- Flutter SDK >= 3.0.0
+- Android Studio Hedgehog ou superior
+- Dispositivo Android com suporte a ARCore (ver [lista oficial](https://developers.google.com/ar/devices))
+- NDK instalado (`flutter.ndkVersion` no `local.properties`)
+
+### Passos
 
 ```bash
-git clone https://github.com/seu-usuario/mobile-ar-tour-system.git
+git clone https://github.com/Brun05ouza/mobile-ar-tour-system.git
 cd mobile-ar-tour-system
-```
-
-### 2. Instale as dependências Flutter
-
-```bash
 flutter pub get
+flutter run
 ```
 
-### 3. Verifique o ambiente
+Se o build falhar por JVM target:
 
 ```bash
-flutter doctor
-```
-
-Todos os itens relevantes devem estar com `✓`. Preste atenção especialmente em:
-- Flutter SDK
-- Android toolchain
-- Connected device
-
-### 4. Conecte o dispositivo Android
-
-Ative o **Modo Desenvolvedor** no seu celular:
-1. Vá em **Configurações → Sobre o telefone**
-2. Toque 7 vezes em **Número da versão**
-3. Volte para **Configurações → Opções do desenvolvedor**
-4. Ative **Depuração USB**
-
-Conecte o cabo USB e confirme a permissão no celular.
-
-Verifique se o dispositivo foi reconhecido:
-
-```bash
-flutter devices
-```
-
-### 5. Rode o app
-
-```bash
+cd android
+./gradlew clean
+cd ..
 flutter run
 ```
 
 ---
 
-## Configuração do Android
+## Configuração Android
 
-### Requisitos mínimos no `android/app/build.gradle.kts`
-
-O projeto já está configurado com:
-
-```kotlin
-compileOptions {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-}
-kotlinOptions {
-    jvmTarget = "17"
-}
-dependencies {
-    implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.google.ar:core:1.44.0")
-}
-```
-
-### Permissões necessárias (`AndroidManifest.xml`)
+### Permissões (AndroidManifest.xml)
 
 Já configuradas:
-
 ```xml
 <uses-permission android:name="android.permission.CAMERA" />
-<uses-permission android:name="android.permission.INTERNET" />
-<uses-feature android:name="android.hardware.camera.ar" android:required="true"/>
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 ```
 
-### Jetifier (necessário para compatibilidade de bibliotecas legadas)
+### Google Play Services Location
 
-Já ativado no `android/gradle.properties`:
-
-```properties
-android.useAndroidX=true
-android.enableJetifier=true
+Já adicionado em `android/app/build.gradle.kts`:
+```kotlin
+implementation("com.google.android.gms:play-services-location:21.3.0")
 ```
+
+### ARCore
+
+O ARCore é declarado como `required`. O app não instala em dispositivos sem suporte.
+Para torná-lo opcional:
+
+```xml
+<!-- AndroidManifest.xml -->
+<uses-feature android:name="android.hardware.camera.ar" android:required="false"/>
+```
+
+E adicione verificação em runtime antes de criar a `Session`.
 
 ---
 
-## Imagens de referência (AR)
+## Como Adicionar Novos Pontos
 
-As imagens que o ARCore usa para reconhecimento ficam em:
+### 1. Adicione a imagem de referência ARCore
 
+Coloque a imagem em:
 ```
-android/app/src/main/assets/images/
+android/app/src/main/assets/images/<nome>.png
 ```
 
-| Arquivo | Ponto turístico | Marker ID |
-|---|---|---|
-| `coca-cola.png` | Lata de Coca-Cola (teste) | `marker_01` |
-| `cristo-redentor.png` | Cristo Redentor | `marker_02` |
-| `pao-de-acucar.png` | Pão de Açúcar | `marker_03` |
+Recomendações:
+- Formato RGB (sem transparência)
+- Resolução máxima 400px de largura
+- Alto contraste, sem áreas uniformes
 
-### Como adicionar novas imagens de referência
-
-1. **Prepare a imagem:**
-   - Formato: PNG ou JPG
-   - Tamanho recomendado: entre 300px e 500px de largura
-   - Modo de cor: **RGB** (sem transparência/alpha)
-   - Imagens com alto contraste e muitos detalhes são detectadas melhor
-   - Evite imagens com fundo sólido, muito borrão ou áreas repetitivas
-
-2. **Salve em:** `android/app/src/main/assets/images/nome-da-imagem.png`
-
-3. **Registre no `ArImageTrackingActivity.kt`:**
+### 2. Registre no `imageMap` da `HybridArActivity`
 
 ```kotlin
-private val imageMap = mapOf(
-    "coca-cola"        to Pair("marker_01", 0.07f),   // largura física em metros
-    "cristo-redentor"  to Pair("marker_02", 0.15f),
-    "pao-de-acucar"    to Pair("marker_03", 0.15f),
-    "nova-imagem"      to Pair("marker_04", 0.10f),   // adicione aqui
+// HybridArActivity.kt
+private val IMAGE_MAP = mapOf(
+    "meu-ponto" to Pair("marker_04", 0.15f)  // nome-arquivo → (referência, largura-física-em-metros)
 )
 ```
 
-   > O terceiro valor (`0.15f`) é a **largura física real** do objeto/foto em metros. Isso ajuda o ARCore a detectar com muito mais precisão. Ex: uma foto impressa em A4 tem ~0.21f, uma lata de refrigerante ~0.07f.
+O mesmo registro deve existir em `ArImageTrackingActivity.kt` para o modo legado.
 
-4. **Cadastre o ponto no `assets/data/points.json`:**
+### 3. Adicione ao `points.json`
+
+`assets/content/points.json`:
 
 ```json
 {
-  "id": "4",
-  "name": "Nome do Ponto",
-  "description": "Descrição curta",
-  "details": "Descrição longa e detalhada...",
+  "id": "point_004",
+  "name": "Nome do Local",
+  "description": "Descrição curta.",
+  "details": "Descrição completa...",
   "imageReference": "marker_04",
-  "latitude": -23.0,
-  "longitude": -43.0
+  "imagePath": "assets/images/meu-ponto.png",
+  "latitude": -23.5505,
+  "longitude": -46.6333,
+  "category": "historia",
+  "tags": ["patrimonio", "cultural"],
+  "recognitionImages": [],
+  "recognitionThreshold": 0.75,
+  "thumbnailAsset": "assets/images/meu-ponto.png",
+  "audioAsset": ""
 }
 ```
 
-5. Rode `flutter run` novamente.
+### 4. Registre o asset no `pubspec.yaml`
 
----
-
-## Estrutura do projeto
-
-```
-mobile-ar-tour-system/
-├── android/
-│   └── app/
-│       └── src/main/
-│           ├── assets/images/          # Imagens de referência ARCore
-│           ├── kotlin/.../
-│           │   ├── MainActivity.kt         # Platform Channel Flutter ↔ Android
-│           │   ├── ArImageTrackingActivity.kt  # Activity nativa ARCore
-│           │   ├── BackgroundRenderer.kt   # Renderiza feed da câmera no OpenGL
-│           │   └── DisplayRotationHelper.kt # Gerencia rotação do display
-│           └── res/layout/
-│               └── activity_ar_tracking.xml
-├── assets/
-│   ├── data/points.json               # Dados dos pontos turísticos
-│   └── images/                        # Imagens usadas no app Flutter
-├── lib/
-│   ├── main.dart
-│   ├── data/
-│   │   ├── models/point_model.dart
-│   │   ├── providers/points_provider.dart
-│   │   └── services/points_service.dart
-│   └── presentation/
-│       ├── home/home_screen.dart
-│       ├── ar/
-│       │   ├── ar_view.dart
-│       │   └── ar_overlay_card.dart
-│       ├── list/points_list_screen.dart
-│       └── details/details_screen.dart
-└── pubspec.yaml
+Se a imagem estiver em uma pasta nova, adicione:
+```yaml
+flutter:
+  assets:
+    - assets/images/
 ```
 
 ---
 
-## Como funciona o AR
+## Como Adicionar Imagens de Reconhecimento
+
+As `recognitionImages` são usadas pelo `VisualRecognitionManager` para comparação ORB/OpenCV.
+São diferentes das imagens ARCore — são fotos tiradas do local para reconhecimento visual contextual.
+
+### 1. Coloque as imagens em
 
 ```
-Usuário clica "Iniciar AR"
-        ↓
-Flutter chama Platform Channel → startImageTracking
-        ↓
-ArImageTrackingActivity inicia (Activity nativa Android)
-        ↓
-ARCore Session criada com banco de imagens de referência
-        ↓
-GLSurfaceView renderiza feed da câmera em tempo real
-        ↓
-ARCore detecta imagem → TrackingState.TRACKING
-        ↓
-Activity retorna imageReference via Platform Channel
-        ↓
-Flutter busca o ponto no JSON pelo imageReference
-        ↓
-ArOverlayCard exibe nome + descrição com animação
-        ↓
-Usuário pode navegar para a tela de Detalhes
+assets/recognition/point_004/
+  frontal.jpg
+  lateral.jpg
+  placa.jpg
+  detalhe.jpg
 ```
 
----
+Recomendações:
+- 3–5 imagens por ponto, de ângulos diferentes
+- Resolução 640×480 ou menor (OpenCV redimensiona internamente para 320×240)
+- Formato JPEG ou PNG
 
-## Dependências Flutter
+### 2. Registre no `points.json`
+
+```json
+"recognitionImages": [
+  "assets/recognition/point_004/frontal.jpg",
+  "assets/recognition/point_004/lateral.jpg",
+  "assets/recognition/point_004/placa.jpg"
+]
+```
+
+### 3. Registre no `pubspec.yaml`
 
 ```yaml
-dependencies:
-  flutter_riverpod: ^2.x    # Gerenciamento de estado
-  hive_flutter: ^1.x        # Persistência local
-  geolocator: ^x.x          # Localização GPS
+assets:
+  - assets/recognition/point_004/
 ```
+
+> **Nota:** O reconhecimento visual só será ativo após a integração do OpenCV.
+> Enquanto isso, o `VisualRecognitionManager` retorna score 0.0 e a decisão
+> é baseada em marker + geolocalização.
+
+---
+
+## Como Calibrar Thresholds
+
+### Por ponto individual
+
+Use o campo `recognitionThreshold` no `points.json`:
+```json
+"recognitionThreshold": 0.85
+```
+
+Quando diferente de `0.0`, este valor substitui o `THRESHOLD_AUTO` global para aquele ponto.
+
+> A implementação do threshold por ponto está no `PointModel.recognitionThreshold`.
+> Para ativá-la no `RecognitionFusionManager`, adicione:
+> ```kotlin
+> val threshold = candidate.customThreshold.takeIf { it > 0f }
+>     ?: RecognitionConstants.THRESHOLD_AUTO
+> ```
+
+### Debug em tempo real
+
+Em modo debug (`kDebugMode = true`), o `RecognitionDebugPanel` exibe:
+- Posição GPS atual
+- Candidatos próximos com distância
+- Scores parciais (geo, marker, visual) e score final
+- Origem da decisão
+- Última mensagem do pipeline
+
+---
+
+## Integração Flutter ↔ Android
+
+### Canais de comunicação
+
+| Canal | Tipo | Direção | Uso |
+|---|---|---|---|
+| `com.brunoouza.ar_tour/ar_detection` | MethodChannel | Flutter → Android | Modo legado (`startImageTracking`) |
+| `com.brunoouza.ar_tour/recognition_control` | MethodChannel | Flutter → Android | Controle do modo híbrido |
+| `com.brunoouza.ar_tour/recognition_events` | EventChannel | Android → Flutter | Stream de eventos de reconhecimento |
+
+### Eventos emitidos pelo Android
+
+| Evento | Payload | Quando |
+|---|---|---|
+| `onMarkerDetected` | `{pointId, markerRef, confidence}` | Marker ARCore entra em TRACKING |
+| `onRecognitionConfirmed` | `{pointId, pointName, score, source}` | score >= 0.90 |
+| `onRecognitionSuggestion` | `{pointId, pointName, score}` | score entre 0.65 e 0.90 |
+| `onRecognitionLost` | `{pointId}` | Marker sai do campo de visão |
+| `onLocationUpdate` | `{lat, lon, accuracy}` | Nova posição GPS |
+| `onRecognitionDebugInfo` | `{message, candidates[]}` | A cada ciclo de análise |
+
+---
+
+## Estrutura do Projeto
+
+```
+lib/
+  main.dart                        # AppTheme + inicialização Hive
+  data/
+    models/
+      point_model.dart             # Modelo com campos de reconhecimento
+      point_model.g.dart           # Adaptador Hive (gerado)
+    providers/
+      points_provider.dart         # FutureProvider da lista de pontos
+      user_prefs_provider.dart     # Visitados, Favoritos, Filtro
+    services/
+      points_service.dart          # Carrega e filtra pontos do JSON
+      user_prefs_service.dart      # Persistência Hive de prefs do usuário
+  features/
+    recognition/
+      domain/
+        recognition_status.dart    # Enum de estados
+        recognition_source.dart    # Enum de origem da decisão
+        recognition_candidate.dart # Candidato com scores parciais
+        recognition_result.dart    # Resultado da fusão
+        recognition_state_model.dart # Estado imutável Riverpod
+      data/
+        recognition_channel.dart   # EventChannel + MethodChannel
+        recognition_notifier.dart  # Notifier Riverpod
+      presentation/
+        hybrid_ar_view.dart        # Tela principal híbrida
+        widgets/
+          recognition_status_banner.dart
+          recognition_suggestion_card.dart
+          recognition_debug_panel.dart
+    location/
+      domain/
+        location_service.dart      # Geolocator + haversine
+  presentation/
+    home/home_screen.dart
+    ar/
+      ar_view.dart                 # Modo legado (preservado)
+      ar_overlay_card.dart
+    list/points_list_screen.dart
+    details/details_screen.dart
+
+android/app/src/main/kotlin/com/brunoouza/ar_tour/
+  MainActivity.kt                  # Canais legado + híbrido
+  ArImageTrackingActivity.kt       # Modo legado (preservado)
+  BackgroundRenderer.kt
+  DisplayRotationHelper.kt
+  recognition/
+    HybridArActivity.kt
+    RecognitionConstants.kt
+    RecognitionFusionManager.kt
+    RecognitionEventDispatcher.kt
+    LocationScoringManager.kt
+    VisualRecognitionManager.kt
+  location/
+    CurrentLocationProvider.kt
+  models/
+    RecognitionCandidate.kt
+    RecognitionResult.kt
+
+assets/
+  content/
+    points.json                    # Dados dos pontos (novo caminho)
+  data/
+    points.json                    # Legado (mantido para compatibilidade)
+  images/
+    coca-cola.png
+    cristo-redentor.png
+    pao-de-acucar.png
+    thumbnails/
+  recognition/
+    point_001/                     # Imagens para ORB/OpenCV
+    point_002/
+    point_003/
+  audio/
+```
+
+---
+
+## Integrando OpenCV (Fase Futura)
+
+### 1. Adicione a dependência
+
+`android/app/build.gradle.kts`:
+```kotlin
+implementation("org.opencv:opencv:4.9.0")
+```
+
+### 2. Implemente os métodos placeholder
+
+Em `VisualRecognitionManager.kt`, substitua:
+- `captureFrameBitmap()` — use `frame.acquireCameraImage()` e converta para `Mat`
+- `analyzeFrame()` — implemente ORB + BruteForce Matcher (ver comentários no arquivo)
+- `getOrComputeDescriptors()` — carregue assets e extraia descriptors com `ORB.create()`
+
+### 3. Ajuste os pesos
+
+`RecognitionConstants.kt`:
+```kotlin
+const val WEIGHT_MARKER  = 0.40f
+const val WEIGHT_GEO     = 0.20f
+const val WEIGHT_VISUAL  = 0.40f
+```
+
+### 4. Adicione imagens de reconhecimento
+
+Ver seção [Como Adicionar Imagens de Reconhecimento](#como-adicionar-imagens-de-reconhecimento).
 
 ---
 
 ## Troubleshooting
 
-**Build falha com erro de namespace:**
-> Verifique se o `ar_flutter_plugin` em `~/.pub-cache` tem `namespace` declarado no `build.gradle`.
+### App fecha ao abrir AR
+- Verifique se o dispositivo suporta ARCore
+- Confirme permissão de câmera concedida
 
-**App instala mas AR fecha imediatamente:**
-> Certifique-se de que o ARCore Services está instalado no dispositivo. Acesse a Play Store e busque por "Google Play Services for AR".
+### Camera feed preta
+- Certifique-se que `BackgroundRenderer.createOnGlThread()` é chamado em `onSurfaceCreated`
+- Verifique que `session.setCameraTextureName(backgroundRenderer.textureId)` é chamado
 
-**Câmera abre mas não detecta imagens:**
-> - Segure o celular a ~20-30cm da imagem, em boa iluminação
-> - A imagem precisa estar impressa ou em uma tela com boa resolução
-> - Verifique se a largura física em metros está correta no `imageMap`
-> - Imagens muito simples ou com baixo contraste têm dificuldade de detecção
+### Nenhuma imagem detectada
+- Imprima a imagem em tamanho físico correto (ver `widthInMeters` em `IMAGE_MAP`)
+- Use imagens RGB sem transparência, máximo 400px
+- Ilumine bem o ambiente — ARCore precisa de contraste nítido
 
-**`TextureNotSetException` no logcat:**
-> A textura OpenGL não foi configurada antes do `session.update()`. Certifique-se de que `backgroundRenderer.createOnGlThread()` é chamado em `onSurfaceCreated` e `session.setCameraTextureName()` em `onDrawFrame` antes do `update()`.
+### GPS não obtido
+- Ative o GPS no dispositivo
+- Conceda permissão `ACCESS_FINE_LOCATION`
+- Outdoor: aguarde alguns segundos para o GPS fixar
+- O app continua funcionando só com marker se o GPS falhar
+
+### EventChannel não recebe eventos
+- Verifique que `HybridArActivity.flutterEngine` está sendo injetado
+- Confirme que o nome do canal em `RecognitionConstants.EVENT_CHANNEL` bate com o Flutter
+- Verifique logs com tag `EventDispatcher` no Logcat
+
+### Build error: "Unresolved reference"
+```bash
+cd android
+./gradlew clean
+cd ..
+flutter clean
+flutter pub get
+flutter run
+```

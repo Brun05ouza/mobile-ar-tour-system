@@ -22,6 +22,9 @@ dependencies:
   # Permissões (câmera para AR) — versão via dependency_overrides
   permission_handler: any
 
+  # Geolocalização
+  geolocator: ^13.0.0
+
   # Utilitários
   path_provider: ^2.1.2
   uuid: ^4.3.3
@@ -38,10 +41,16 @@ dev_dependencies:
 dependency_overrides:
   permission_handler: ^11.3.0
   permission_handler_android: ^12.0.6
+  geolocator: ^13.0.0
 
 flutter:
   uses-material-design: true
   assets:
     - assets/data/
+    - assets/content/
     - assets/images/
-    - assets/images/ar/
+    - assets/images/thumbnails/
+    - assets/recognition/point_001/
+    - assets/recognition/point_002/
+    - assets/recognition/point_003/
+    - assets/audio/
