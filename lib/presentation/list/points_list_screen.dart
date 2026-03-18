@@ -86,14 +86,22 @@ class PointsListScreen extends ConsumerWidget {
                     final isVisited = visited.contains(point.id);
                     final isFavorite = favorites.contains(point.id);
 
-                    return _PointCard(
-                      point: point,
-                      isVisited: isVisited,
-                      isFavorite: isFavorite,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => DetailsScreen(point: point),
+                    return _AnimatedCard(
+                      index: index,
+                      child: _PointCard(
+                        point: point,
+                        isVisited: isVisited,
+                        isFavorite: isFavorite,
+                        onTap: () => Navigator.push(
+                          context,
+                          PageRouteBuilder(
+                            pageBuilder: (_, __, ___) =>
+                                DetailsScreen(point: point),
+                            transitionDuration:
+                                const Duration(milliseconds: 350),
+                            transitionsBuilder: (_, anim, __, child) =>
+                                FadeTransition(opacity: anim, child: child),
+                          ),
                         ),
                       ),
                     );
@@ -353,6 +361,55 @@ class _PointCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Animated Card (staggered entrada) ─────────────────────────────────────────
+
+class _AnimatedCard extends StatefulWidget {
+  final int index;
+  final Widget child;
+
+  const _AnimatedCard({required this.index, required this.child});
+
+  @override
+  State<_AnimatedCard> createState() => _AnimatedCardState();
+}
+
+class _AnimatedCardState extends State<_AnimatedCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.2),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+
+    Future.delayed(Duration(milliseconds: widget.index * 60), () {
+      if (mounted) _ctrl.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(
+        opacity: _fade,
+        child: SlideTransition(position: _slide, child: widget.child),
+      );
 }
 
 // ── Empty State ───────────────────────────────────────────────────────────────

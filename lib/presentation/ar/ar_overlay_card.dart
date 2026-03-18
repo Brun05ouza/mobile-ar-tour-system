@@ -86,17 +86,28 @@ class _ArOverlayCardState extends ConsumerState<ArOverlayCard>
                 // ── Header ──────────────────────────────────────────────────
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.teal.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.place,
-                        color: Colors.tealAccent,
-                        size: 22,
-                      ),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: widget.point.imagePath.isNotEmpty
+                          ? Image.asset(
+                              widget.point.imagePath,
+                              width: 56,
+                              height: 56,
+                              fit: BoxFit.cover,
+                            )
+                          : Container(
+                              width: 56,
+                              height: 56,
+                              decoration: BoxDecoration(
+                                color: Colors.teal.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.place,
+                                color: Colors.tealAccent,
+                                size: 28,
+                              ),
+                            ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
