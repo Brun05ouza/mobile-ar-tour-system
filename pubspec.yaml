@@ -29,6 +29,9 @@ dependencies:
   path_provider: ^2.1.2
   uuid: ^4.3.3
 
+  # Áudio guia (assets locais / offline)
+  just_audio: ^0.9.42
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

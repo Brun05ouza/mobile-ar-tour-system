@@ -13,7 +13,7 @@
     "recognitionImages": [],
     "recognitionThreshold": 0.75,
     "thumbnailAsset": "assets/images/coca-cola.png",
-    "audioAsset": ""
+    "audioAsset": "assets/audio/point_001.wav"
   },
   {
     "id": "point_002",
@@ -29,7 +29,7 @@
     "recognitionImages": [],
     "recognitionThreshold": 0.75,
     "thumbnailAsset": "assets/images/cristo-redentor.png",
-    "audioAsset": ""
+    "audioAsset": "assets/audio/point_002.wav"
   },
   {
     "id": "point_003",
@@ -45,6 +45,6 @@
     "recognitionImages": [],
     "recognitionThreshold": 0.75,
     "thumbnailAsset": "assets/images/pao-de-acucar.png",
-    "audioAsset": ""
+    "audioAsset": "assets/audio/point_003.wav"
   }
 ]

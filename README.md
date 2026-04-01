@@ -169,6 +169,15 @@ cd ..
 flutter run
 ```
 
+### Áudio guia (offline)
+
+Na **tela de detalhes**, se o campo `audioAsset` em `assets/content/points.json` não estiver vazio, o app mostra um player com **play/pause** e **barra de progresso** (inclui seek). O áudio vem de ficheiros em **`assets/audio/`**, embutidos no APK — **não precisa de rede**.
+
+- Formatos comuns suportados pelo pacote `just_audio`: por exemplo **MP3**, **WAV**, **M4A** (conforme codec no dispositivo).
+- Coloque o ficheiro em `assets/audio/` e referencie o caminho completo no JSON, ex.: `"audioAsset": "assets/audio/point_001.wav"`.
+- Se `audioAsset` for `""`, a secção de áudio não aparece.
+- Ao **voltar** da tela de detalhes, o player é encerrado; se a app for para **segundo plano**, a reprodução **pausa** automaticamente.
+
 ---
 
 ## Configuração Android
@@ -247,7 +256,7 @@ O mesmo registro deve existir em `ArImageTrackingActivity.kt` para o modo legado
   "recognitionImages": [],
   "recognitionThreshold": 0.75,
   "thumbnailAsset": "assets/images/meu-ponto.png",
-  "audioAsset": ""
+  "audioAsset": "assets/audio/meu-ponto.wav"
 }
 ```
 

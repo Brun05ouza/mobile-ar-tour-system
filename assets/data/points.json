@@ -7,7 +7,8 @@
     "imageReference": "marker_01",
     "imagePath": "assets/images/coca-cola.png",
     "latitude": -22.9068,
-    "longitude": -43.1729
+    "longitude": -43.1729,
+    "audioAsset": "assets/audio/point_001.wav"
   },
   {
     "id": "point_002",
@@ -17,7 +18,8 @@
     "imageReference": "marker_02",
     "imagePath": "assets/images/cristo-redentor.png",
     "latitude": -22.9519,
-    "longitude": -43.2105
+    "longitude": -43.2105,
+    "audioAsset": "assets/audio/point_002.wav"
   },
   {
     "id": "point_003",
@@ -27,6 +29,7 @@
     "imageReference": "marker_03",
     "imagePath": "assets/images/pao-de-acucar.png",
     "latitude": -22.9489,
-    "longitude": -43.1553
+    "longitude": -43.1553,
+    "audioAsset": "assets/audio/point_003.wav"
   }
 ]

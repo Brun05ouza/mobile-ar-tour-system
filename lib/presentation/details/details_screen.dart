@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/point_model.dart';
 import '../../data/providers/user_prefs_provider.dart';
+import 'audio_guide_section.dart';
 
 class DetailsScreen extends ConsumerWidget {
   final PointModel point;
@@ -250,6 +251,11 @@ class DetailsScreen extends ConsumerWidget {
                         height: 1.6,
                       ),
                     ),
+                  ],
+
+                  if (point.audioAsset.trim().isNotEmpty) ...[
+                    const SizedBox(height: 28),
+                    AudioGuideSection(audioAssetPath: point.audioAsset.trim()),
                   ],
 
                   const SizedBox(height: 28),
