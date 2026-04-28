@@ -87,6 +87,17 @@ class _RecognitionSuggestionCardState extends State<RecognitionSuggestionCard>
                               width: 48,
                               height: 48,
                               fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                width: 48,
+                                height: 48,
+                                color: Colors.amber.withOpacity(0.2),
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                  Icons.hide_image_outlined,
+                                  color: Colors.amberAccent,
+                                  size: 22,
+                                ),
+                              ),
                             )
                           : Container(
                               width: 48,
@@ -112,7 +123,7 @@ class _RecognitionSuggestionCardState extends State<RecognitionSuggestionCard>
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              'TALVEZ VOCÊ ESTEJA VENDO',
+                              'POSSÍVEL CORRESPONDÊNCIA',
                               style: TextStyle(
                                 color: Colors.amberAccent.withOpacity(0.9),
                                 fontSize: 10,
@@ -136,22 +147,6 @@ class _RecognitionSuggestionCardState extends State<RecognitionSuggestionCard>
                   ],
                 ),
 
-                const SizedBox(height: 10),
-
-                // Score de confiança
-                Row(
-                  children: [
-                    const Icon(Icons.analytics_outlined,
-                        size: 14, color: Colors.white38),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Confiança: ${(widget.confidence * 100).toStringAsFixed(0)}%',
-                      style: const TextStyle(
-                          color: Colors.white38, fontSize: 12),
-                    ),
-                  ],
-                ),
-
                 const SizedBox(height: 14),
                 Container(height: 1, color: Colors.white.withOpacity(0.07)),
                 const SizedBox(height: 14),
@@ -171,7 +166,7 @@ class _RecognitionSuggestionCardState extends State<RecognitionSuggestionCard>
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: const Text('Ignorar'),
+                        child: const Text('Outra sugestão'),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -181,7 +176,7 @@ class _RecognitionSuggestionCardState extends State<RecognitionSuggestionCard>
                       child: ElevatedButton.icon(
                         onPressed: widget.onConfirm,
                         icon: const Icon(Icons.check, size: 18),
-                        label: const Text('É este local'),
+                        label: const Text('Sim, é este'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.amber.shade700,
                           foregroundColor: Colors.black87,

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../../app/theme/app_theme.dart';
 import '../../data/models/point_model.dart';
 import '../../data/providers/points_provider.dart';
 import '../../data/providers/user_prefs_provider.dart';
@@ -16,101 +19,144 @@ class PointsListScreen extends ConsumerWidget {
     final favorites = ref.watch(favoritesProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1117),
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('Pontos do Tour'),
-        backgroundColor: const Color(0xFF0F1117),
-        foregroundColor: Colors.white,
+        title: Text(
+          'Locais do circuito',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        foregroundColor: AppColors.textPrimary,
         elevation: 0,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: Colors.white.withOpacity(0.08)),
+          child: Container(
+            height: 1,
+            color: AppColors.borderSubtle,
+          ),
         ),
       ),
-      body: Column(
-        children: [
-          // ── Barra de filtros ──────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Row(
-              children: [
-                _FilterChip(
-                  label: 'Todos',
-                  icon: Icons.list,
-                  active: filter == PointFilter.all,
-                  onTap: () => ref.read(filterProvider.notifier).state = PointFilter.all,
-                ),
-                const SizedBox(width: 8),
-                _FilterChip(
-                  label: 'Visitados',
-                  icon: Icons.check_circle_outline,
-                  active: filter == PointFilter.visited,
-                  color: Colors.green,
-                  onTap: () => ref.read(filterProvider.notifier).state = PointFilter.visited,
-                ),
-                const SizedBox(width: 8),
-                _FilterChip(
-                  label: 'Favoritos',
-                  icon: Icons.favorite_border,
-                  active: filter == PointFilter.favorites,
-                  color: Colors.pinkAccent,
-                  onTap: () => ref.read(filterProvider.notifier).state = PointFilter.favorites,
-                ),
-              ],
+      body: AppBackground(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Row(
+                children: [
+                  _FilterChip(
+                    label: 'Todos',
+                    icon: Icons.list_rounded,
+                    active: filter == PointFilter.all,
+                    onTap: () =>
+                        ref.read(filterProvider.notifier).state = PointFilter.all,
+                  ),
+                  const SizedBox(width: 8),
+                  _FilterChip(
+                    label: 'Visitados',
+                    icon: Icons.check_circle_outline_rounded,
+                    active: filter == PointFilter.visited,
+                    color: const Color(0xFF6BCB9E),
+                    onTap: () => ref.read(filterProvider.notifier).state =
+                        PointFilter.visited,
+                  ),
+                  const SizedBox(width: 8),
+                  _FilterChip(
+                    label: 'Favoritos',
+                    icon: Icons.favorite_border_rounded,
+                    active: filter == PointFilter.favorites,
+                    color: const Color(0xFFE8A0BF),
+                    onTap: () => ref.read(filterProvider.notifier).state =
+                        PointFilter.favorites,
+                  ),
+                ],
+              ),
             ),
-          ),
-
-          // ── Lista ─────────────────────────────────────────────────────────
-          Expanded(
-            child: pointsAsync.when(
-              loading: () => const Center(
-                child: CircularProgressIndicator(color: Colors.teal),
-              ),
-              error: (e, _) => Center(
-                child: Text('Erro ao carregar pontos: $e',
-                    style: const TextStyle(color: Colors.red)),
-              ),
-              data: (points) {
-                final filtered = _applyFilter(points, filter, visited, favorites);
-
-                if (filtered.isEmpty) {
-                  return _EmptyState(filter: filter);
-                }
-
-                return ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final point = filtered[index];
-                    final isVisited = visited.contains(point.id);
-                    final isFavorite = favorites.contains(point.id);
-
-                    return _AnimatedCard(
-                      index: index,
-                      child: _PointCard(
-                        point: point,
-                        isVisited: isVisited,
-                        isFavorite: isFavorite,
-                        onTap: () => Navigator.push(
-                          context,
-                          PageRouteBuilder(
-                            pageBuilder: (_, __, ___) =>
-                                DetailsScreen(point: point),
-                            transitionDuration:
-                                const Duration(milliseconds: 350),
-                            transitionsBuilder: (_, anim, __, child) =>
-                                FadeTransition(opacity: anim, child: child),
+            Expanded(
+              child: pointsAsync.when(
+                loading: () => const Center(
+                  child: CircularProgressIndicator(color: AppColors.accent),
+                ),
+                error: (_, __) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.wifi_off_rounded,
+                          size: 48,
+                          color: AppColors.textHint.withValues(alpha: 0.8),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Não foi possível carregar os locais.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: AppColors.textSecondary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ),
-                    );
-                  },
-                );
-              },
+                        const SizedBox(height: 8),
+                        Text(
+                          'Verifique a ligação à Internet e tente novamente.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: AppColors.textHint,
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                data: (points) {
+                  final filtered =
+                      _applyFilter(points, filter, visited, favorites);
+
+                  if (filtered.isEmpty) {
+                    return _EmptyState(filter: filter);
+                  }
+
+                  return ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final point = filtered[index];
+                      final isVisited = visited.contains(point.id);
+                      final isFavorite = favorites.contains(point.id);
+
+                      return _AnimatedCard(
+                        index: index,
+                        child: _PointCard(
+                          point: point,
+                          isVisited: isVisited,
+                          isFavorite: isFavorite,
+                          onTap: () => Navigator.push(
+                            context,
+                            PageRouteBuilder(
+                              pageBuilder: (_, __, ___) =>
+                                  DetailsScreen(point: point),
+                              transitionDuration:
+                                  const Duration(milliseconds: 350),
+                              transitionsBuilder: (_, anim, __, child) =>
+                                  FadeTransition(opacity: anim, child: child),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -132,8 +178,6 @@ class PointsListScreen extends ConsumerWidget {
   }
 }
 
-// ── Filter Chip ───────────────────────────────────────────────────────────────
-
 class _FilterChip extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -146,7 +190,7 @@ class _FilterChip extends StatelessWidget {
     required this.icon,
     required this.active,
     required this.onTap,
-    this.color = Colors.teal,
+    this.color = AppColors.accent,
   });
 
   @override
@@ -157,23 +201,31 @@ class _FilterChip extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: active ? color.withOpacity(0.2) : Colors.white.withOpacity(0.05),
+          color: active
+              ? color.withValues(alpha: 0.22)
+              : AppColors.textPrimary.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: active ? color.withOpacity(0.6) : Colors.white.withOpacity(0.1),
+            color: active
+                ? color.withValues(alpha: 0.55)
+                : AppColors.textPrimary.withValues(alpha: 0.1),
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: active ? color : Colors.white38),
+            Icon(
+              icon,
+              size: 14,
+              color: active ? color : AppColors.textHint,
+            ),
             const SizedBox(width: 6),
             Text(
               label,
-              style: TextStyle(
-                color: active ? color : Colors.white38,
+              style: GoogleFonts.plusJakartaSans(
+                color: active ? color : AppColors.textHint,
                 fontSize: 13,
-                fontWeight: active ? FontWeight.w700 : FontWeight.normal,
+                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
           ],
@@ -182,8 +234,6 @@ class _FilterChip extends StatelessWidget {
     );
   }
 }
-
-// ── Point Card ────────────────────────────────────────────────────────────────
 
 class _PointCard extends StatelessWidget {
   final PointModel point;
@@ -206,17 +256,16 @@ class _PointCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.06),
+          color: AppColors.surface.withValues(alpha: 0.85),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isVisited
-                ? Colors.green.withOpacity(0.35)
-                : Colors.white.withOpacity(0.08),
+                ? const Color(0xFF6BCB9E).withValues(alpha: 0.35)
+                : AppColors.borderSubtle,
           ),
         ),
         child: Row(
           children: [
-            // Thumbnail do ponto com badge de favorito/visitado
             Stack(
               clipBehavior: Clip.none,
               children: [
@@ -227,8 +276,8 @@ class _PointCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: isVisited
-                          ? Colors.green.withOpacity(0.5)
-                          : Colors.white.withOpacity(0.1),
+                          ? const Color(0xFF6BCB9E).withValues(alpha: 0.5)
+                          : AppColors.textPrimary.withValues(alpha: 0.12),
                       width: 2,
                     ),
                   ),
@@ -238,12 +287,21 @@ class _PointCard extends StatelessWidget {
                         ? Image.asset(
                             point.imagePath,
                             fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: AppColors.accent.withValues(alpha: 0.12),
+                              alignment: Alignment.center,
+                              child: Icon(
+                                Icons.hide_image_outlined,
+                                color: AppColors.accent.withValues(alpha: 0.65),
+                                size: 28,
+                              ),
+                            ),
                           )
                         : Container(
-                            color: Colors.teal.withOpacity(0.2),
+                            color: AppColors.accent.withValues(alpha: 0.15),
                             child: Icon(
-                              Icons.place,
-                              color: Colors.tealAccent,
+                              Icons.place_rounded,
+                              color: AppColors.accent,
                               size: 28,
                             ),
                           ),
@@ -256,14 +314,16 @@ class _PointCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(3),
                       decoration: BoxDecoration(
-                        color: Colors.green,
+                        color: const Color(0xFF6BCB9E),
                         shape: BoxShape.circle,
                         border: Border.all(
-                            color: const Color(0xFF0F1117), width: 2),
+                          color: AppColors.bgDeep,
+                          width: 2,
+                        ),
                       ),
                       child: const Icon(
-                        Icons.check,
-                        color: Colors.white,
+                        Icons.check_rounded,
+                        color: Color(0xFF1A1510),
                         size: 10,
                       ),
                     ),
@@ -275,15 +335,16 @@ class _PointCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(3),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0F1117),
+                        color: AppColors.bgDeep,
                         shape: BoxShape.circle,
                         border: Border.all(
-                            color: Colors.pinkAccent.withOpacity(0.5),
-                            width: 1),
+                          color: const Color(0xFFE8A0BF).withValues(alpha: 0.6),
+                          width: 1,
+                        ),
                       ),
                       child: const Icon(
-                        Icons.favorite,
-                        color: Colors.pinkAccent,
+                        Icons.favorite_rounded,
+                        color: Color(0xFFE8A0BF),
                         size: 12,
                       ),
                     ),
@@ -300,25 +361,27 @@ class _PointCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           point.name,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: AppColors.textPrimary,
                             fontSize: 15,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
                       if (isVisited)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.15),
+                            color: const Color(0xFF6BCB9E).withValues(alpha: 0.18),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Text(
+                          child: Text(
                             'Visitado',
-                            style: TextStyle(
-                              color: Colors.greenAccent,
+                            style: GoogleFonts.plusJakartaSans(
+                              color: const Color(0xFFB8F0D8),
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
                             ),
@@ -331,39 +394,26 @@ class _PointCard extends StatelessWidget {
                     point.description,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.55),
+                    style: GoogleFonts.plusJakartaSans(
+                      color: AppColors.textSecondary,
                       fontSize: 13,
                       height: 1.4,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(Icons.image_search, size: 12, color: Colors.teal),
-                      const SizedBox(width: 4),
-                      Text(
-                        point.imageReference,
-                        style: const TextStyle(
-                          color: Colors.teal,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.white38, size: 22),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.textHint,
+              size: 22,
+            ),
           ],
         ),
       ),
     );
   }
 }
-
-// ── Animated Card (staggered entrada) ─────────────────────────────────────────
 
 class _AnimatedCard extends StatefulWidget {
   final int index;
@@ -412,8 +462,6 @@ class _AnimatedCardState extends State<_AnimatedCard>
       );
 }
 
-// ── Empty State ───────────────────────────────────────────────────────────────
-
 class _EmptyState extends StatelessWidget {
   final PointFilter filter;
   const _EmptyState({required this.filter});
@@ -428,24 +476,32 @@ class _EmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              isVisited ? Icons.explore_off : Icons.favorite_border,
+              isVisited ? Icons.explore_off_rounded : Icons.favorite_border_rounded,
               size: 64,
-              color: Colors.white12,
+              color: AppColors.textHint.withValues(alpha: 0.4),
             ),
             const SizedBox(height: 16),
             Text(
               isVisited
-                  ? 'Nenhum ponto visitado ainda'
-                  : 'Nenhum ponto favoritado ainda',
-              style: const TextStyle(color: Colors.white38, fontSize: 16),
+                  ? 'Ainda não visitou nenhum local'
+                  : 'Ainda não tem favoritos',
+              style: GoogleFonts.plusJakartaSans(
+                color: AppColors.textSecondary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               isVisited
-                  ? 'Use o AR para escanear um ponto turístico'
-                  : 'Abra os detalhes de um ponto e toque no coração',
-              style: const TextStyle(color: Colors.white24, fontSize: 13),
+                  ? 'Use a experiência em AR para descobrir um monumento.'
+                  : 'Abra os detalhes de um local e toque no coração para guardar.',
+              style: GoogleFonts.plusJakartaSans(
+                color: AppColors.textHint,
+                fontSize: 13,
+                height: 1.45,
+              ),
               textAlign: TextAlign.center,
             ),
           ],

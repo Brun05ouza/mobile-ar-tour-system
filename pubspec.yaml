@@ -32,6 +32,12 @@ dependencies:
   # Áudio guia (assets locais / offline)
   just_audio: ^0.9.42
 
+  # Deep links / QR code → abrir fluxo direto (artour://…)
+  app_links: ^6.3.3
+
+  # Tipografia editorial (experiência premium)
+  google_fonts: ^6.2.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

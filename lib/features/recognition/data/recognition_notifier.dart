@@ -34,7 +34,7 @@ class RecognitionNotifier extends Notifier<RecognitionStateModel> {
   Future<void> startRecognition() async {
     state = state.copyWith(
       status: RecognitionStatus.analyzing,
-      lastDebugMessage: 'Iniciando reconhecimento híbrido...',
+      lastDebugMessage: 'A preparar a experiência…',
     );
 
     _listenToEvents();
@@ -44,7 +44,7 @@ class RecognitionNotifier extends Notifier<RecognitionStateModel> {
     } catch (e) {
       state = state.copyWith(
         status: RecognitionStatus.idle,
-        lastDebugMessage: 'Erro ao iniciar: $e',
+        lastDebugMessage: 'Não foi possível iniciar. Tente novamente.',
       );
     }
   }
@@ -75,7 +75,7 @@ class RecognitionNotifier extends Notifier<RecognitionStateModel> {
     state = state.copyWith(
       status: RecognitionStatus.analyzing,
       clearSuggested: true,
-      lastDebugMessage: 'Sugestão ignorada pelo usuário',
+      lastDebugMessage: 'A procurar outra sugestão…',
     );
   }
 
@@ -86,7 +86,7 @@ class RecognitionNotifier extends Notifier<RecognitionStateModel> {
       markerDetected: false,
       clearConfirmed: true,
       clearSuggested: true,
-      lastDebugMessage: 'Reconhecimento perdido — analisando novamente...',
+      lastDebugMessage: 'A recalibrar a vista…',
     );
 
     // Retorna ao estado "analyzing" após breve delay
@@ -105,7 +105,7 @@ class RecognitionNotifier extends Notifier<RecognitionStateModel> {
       _handleEvent,
       onError: (e) {
         state = state.copyWith(
-          lastDebugMessage: 'Erro no EventChannel: $e',
+          lastDebugMessage: 'Ligação interrompida. Reabra o ecrã se necessário.',
         );
       },
     );
@@ -139,26 +139,32 @@ class RecognitionNotifier extends Notifier<RecognitionStateModel> {
         _onDebugInfo(event);
         break;
 
+      case RecognitionChannel.eventSessionFailed:
+        final msg = event['message'] as String? ?? 'AR indisponível';
+        state = state.copyWith(
+          status: RecognitionStatus.idle,
+          lastDebugMessage: msg,
+        );
+        break;
+
       default:
         break;
     }
   }
 
   Future<void> _onMarkerDetected(Map<String, dynamic> event) async {
-    final pointId = event['pointId'] as String? ?? '';
     final confidence = (event['confidence'] as num?)?.toDouble() ?? 1.0;
 
     state = state.copyWith(
       markerDetected: true,
       recognitionConfidence: confidence,
-      lastDebugMessage: 'Marker detectado: $pointId (conf=${confidence.toStringAsFixed(2)})',
+      lastDebugMessage: 'Sinal do local detetado.',
     );
   }
 
   Future<void> _onConfirmed(Map<String, dynamic> event) async {
     final pointId = event['pointId'] as String? ?? '';
     final confidence = (event['score'] as num?)?.toDouble() ?? 0.0;
-    final source = event['source'] as String? ?? '';
 
     final point = await _findPoint(pointId);
 
@@ -167,7 +173,7 @@ class RecognitionNotifier extends Notifier<RecognitionStateModel> {
       confirmedPoint: point,
       recognitionConfidence: confidence,
       clearSuggested: true,
-      lastDebugMessage: 'CONFIRMADO: $pointId (score=${confidence.toStringAsFixed(2)}, src=$source)',
+      lastDebugMessage: 'Local confirmado.',
     );
   }
 
@@ -184,7 +190,7 @@ class RecognitionNotifier extends Notifier<RecognitionStateModel> {
       status: RecognitionStatus.suggestion,
       suggestedPoint: point,
       recognitionConfidence: score,
-      lastDebugMessage: 'Sugestão: $pointId (score=${score.toStringAsFixed(2)})',
+      lastDebugMessage: 'Sugestão disponível — confirme abaixo.',
     );
   }
 

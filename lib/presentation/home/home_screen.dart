@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../../app/theme/app_theme.dart';
+import '../../features/recognition/presentation/hybrid_ar_view.dart';
 import '../ar/ar_view.dart';
 import '../list/points_list_screen.dart';
-import '../../features/recognition/presentation/hybrid_ar_view.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,33 +19,33 @@ class _HomeScreenState extends State<HomeScreen>
   late final List<Animation<double>> _fades;
   late final List<Animation<Offset>> _slides;
 
-  static const int _itemCount = 5; // logo, title, card1, card2, card3
+  static const int _itemCount = 5;
 
   @override
   void initState() {
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 1100),
     );
 
     _fades = List.generate(_itemCount, (i) {
-      final start = i * 0.15;
+      final start = i * 0.12;
       return CurvedAnimation(
         parent: _ctrl,
-        curve: Interval(start, (start + 0.5).clamp(0.0, 1.0),
+        curve: Interval(start, (start + 0.55).clamp(0.0, 1.0),
             curve: Curves.easeOut),
       );
     });
 
     _slides = List.generate(_itemCount, (i) {
-      final start = i * 0.15;
+      final start = i * 0.12;
       return Tween<Offset>(
-        begin: const Offset(0, 0.25),
+        begin: const Offset(0, 0.18),
         end: Offset.zero,
       ).animate(CurvedAnimation(
         parent: _ctrl,
-        curve: Interval(start, (start + 0.5).clamp(0.0, 1.0),
+        curve: Interval(start, (start + 0.55).clamp(0.0, 1.0),
             curve: Curves.easeOutCubic),
       ));
     });
@@ -64,128 +67,153 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1117),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 48),
+      body: AppBackground(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 12),
 
-              // Logo
-              _animated(
-                0,
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.teal.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: const Icon(
-                    Icons.view_in_ar,
-                    color: Colors.tealAccent,
-                    size: 32,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Título
-              _animated(
-                1,
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'AR Tour',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: -0.5,
+                // Selo / marca
+                _animated(
+                  0,
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          gradient: AppGradients.goldShimmer,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface.withValues(alpha: 0.95),
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: Icon(
+                            Icons.travel_explore_rounded,
+                            color: AppColors.accent,
+                            size: 28,
+                          ),
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Sistema de Tour em Realidade Aumentada',
-                      style: TextStyle(
-                        color: Colors.white54,
-                        fontSize: 13,
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'VISITAR',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 3,
+                                color: AppColors.accent,
+                              ),
+                            ),
+                            Text(
+                              AppBrand.name,
+                              style: GoogleFonts.playfairDisplay(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
+                // Título editorial
+                _animated(
+                  1,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'O circuito\nao seu ritmo',
+                        style: AppTheme.displayLarge(context),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        AppBrand.tagline,
+                        style: AppTheme.bodyMuted(context),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 36),
+
+                // Menu
+                _animated(
+                  2,
+                  _MenuCard(
+                    icon: Icons.center_focus_strong_rounded,
+                    title: 'Reconhecer por imagem',
+                    subtitle:
+                        'Aponte a câmara para as ilustrações oficiais e desbloqueie a história de cada local.',
+                    accent: AppColors.teal,
+                    onTap: () => Navigator.push(
+                      context,
+                      _fadeRoute(const ArView()),
                     ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 48),
-
-              // Card AR
-              _animated(
-                2,
-                _ActionCard(
-                  icon: Icons.camera_alt_rounded,
-                  label: 'Iniciar AR',
-                  sublabel:
-                      'Aponte a câmera para um marcador e explore os pontos de interesse',
-                  color: Colors.teal,
-                  onTap: () => Navigator.push(
-                    context,
-                    _fadeRoute(const ArView()),
                   ),
                 ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Card AR Híbrido (novo sistema de reconhecimento)
-              _animated(
-                3,
-                _ActionCard(
-                  icon: Icons.radar,
-                  label: 'AR Híbrido',
-                  sublabel:
-                      'Reconhecimento automático por marker, localização e visão',
-                  color: const Color(0xFF26A69A),
-                  onTap: () => Navigator.push(
-                    context,
-                    _fadeRoute(const HybridArView()),
+                const SizedBox(height: 12),
+                _animated(
+                  3,
+                  _MenuCard(
+                    icon: Icons.auto_awesome_mosaic_outlined,
+                    title: 'Descoberta guiada',
+                    subtitle:
+                        'Sugestões inteligentes com base na sua posição — confirme quando reconhecer o sítio.',
+                    accent: AppColors.accent,
+                    onTap: () => Navigator.push(
+                      context,
+                      _fadeRoute(const HybridArView()),
+                    ),
                   ),
                 ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Card Lista
-              _animated(
-                4,
-                _ActionCard(
-                  icon: Icons.list_alt_rounded,
-                  label: 'Pontos do Tour',
-                  sublabel:
-                      'Explore todos os pontos cadastrados e veja os detalhes',
-                  color: const Color(0xFF5C6BC0),
-                  onTap: () => Navigator.push(
-                    context,
-                    _fadeRoute(const PointsListScreen()),
+                const SizedBox(height: 12),
+                _animated(
+                  4,
+                  _MenuCard(
+                    icon: Icons.map_outlined,
+                    title: 'Locais do circuito',
+                    subtitle:
+                        'Navegue por todos os pontos, favoritos e locais já visitados.',
+                    accent: AppColors.indigo,
+                    onTap: () => Navigator.push(
+                      context,
+                      _fadeRoute(const PointsListScreen()),
+                    ),
                   ),
                 ),
-              ),
 
-              const Spacer(),
+                const Spacer(),
 
-              Center(
-                child: Text(
-                  'Aponte a câmera para os marcadores AR',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.25),
-                    fontSize: 12,
+                Center(
+                  child: Text(
+                    AppBrand.footerHint,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      color: AppColors.textHint,
+                      height: 1.4,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
-            ],
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),
@@ -194,108 +222,103 @@ class _HomeScreenState extends State<HomeScreen>
 
   PageRoute<T> _fadeRoute<T>(Widget page) => PageRouteBuilder(
         pageBuilder: (_, __, ___) => page,
-        transitionDuration: const Duration(milliseconds: 350),
+        transitionDuration: const Duration(milliseconds: 400),
         transitionsBuilder: (_, anim, __, child) =>
             FadeTransition(opacity: anim, child: child),
       );
 }
 
-// ── Action Card ───────────────────────────────────────────────────────────────
-
-class _ActionCard extends StatefulWidget {
+class _MenuCard extends StatefulWidget {
   final IconData icon;
-  final String label;
-  final String sublabel;
-  final Color color;
+  final String title;
+  final String subtitle;
+  final Color accent;
   final VoidCallback onTap;
 
-  const _ActionCard({
+  const _MenuCard({
     required this.icon,
-    required this.label,
-    required this.sublabel,
-    required this.color,
+    required this.title,
+    required this.subtitle,
+    required this.accent,
     required this.onTap,
   });
 
   @override
-  State<_ActionCard> createState() => _ActionCardState();
+  State<_MenuCard> createState() => _MenuCardState();
 }
 
-class _ActionCardState extends State<_ActionCard> {
+class _MenuCardState extends State<_MenuCard> {
   bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.97 : 1.0,
-        duration: const Duration(milliseconds: 120),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: widget.onTap,
+        onHighlightChanged: (v) => setState(() => _pressed = v),
+        borderRadius: BorderRadius.circular(18),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.all(24),
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: _pressed
-                ? widget.color.withOpacity(0.18)
-                : widget.color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20),
+            color: AppColors.surface.withValues(alpha: _pressed ? 0.95 : 0.72),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: _pressed
-                  ? widget.color.withOpacity(0.5)
-                  : widget.color.withOpacity(0.3),
+              color: widget.accent.withValues(alpha: _pressed ? 0.45 : 0.22),
             ),
-            boxShadow: _pressed
-                ? []
-                : [
-                    BoxShadow(
-                      color: widget.color.withOpacity(0.08),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    )
-                  ],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.35),
+                blurRadius: _pressed ? 8 : 20,
+                offset: Offset(0, _pressed ? 2 : 10),
+              ),
+            ],
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: widget.color.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(16),
+                  color: widget.accent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(widget.icon, color: widget.color, size: 28),
+                child: Icon(widget.icon, color: widget.accent, size: 26),
               ),
-              const SizedBox(width: 18),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.label,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                      widget.title,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Text(
-                      widget.sublabel,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
+                      widget.subtitle,
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
-                        height: 1.4,
+                        height: 1.45,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right,
-                  color: widget.color.withOpacity(0.6), size: 24),
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: widget.accent.withValues(alpha: 0.65),
+                ),
+              ),
             ],
           ),
         ),

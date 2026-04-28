@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../../app/theme/app_theme.dart';
 import '../../data/models/point_model.dart';
 import '../../data/providers/user_prefs_provider.dart';
 import 'audio_guide_section.dart';
@@ -17,15 +20,16 @@ class DetailsScreen extends ConsumerWidget {
     final isFavorite = favorites.contains(point.id);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1117),
-      body: CustomScrollView(
+      backgroundColor: Colors.transparent,
+      body: AppBackground(
+        child: CustomScrollView(
         slivers: [
           // ── AppBar expansível ──────────────────────────────────────────────
           SliverAppBar(
             expandedHeight: 220,
             pinned: true,
-            backgroundColor: const Color(0xFF0F1117),
-            foregroundColor: Colors.white,
+            backgroundColor: Colors.transparent,
+            foregroundColor: AppColors.textPrimary,
             actions: [
               // Botão favoritar
               IconButton(
@@ -38,7 +42,7 @@ class DetailsScreen extends ConsumerWidget {
                   child: Icon(
                     isFavorite ? Icons.favorite : Icons.favorite_border,
                     key: ValueKey(isFavorite),
-                    color: isFavorite ? Colors.pinkAccent : Colors.white54,
+                    color: isFavorite ? const Color(0xFFE8A4C4) : AppColors.textSecondary,
                   ),
                 ),
               ),
@@ -61,6 +65,24 @@ class DetailsScreen extends ConsumerWidget {
                     Image.asset(
                       point.imagePath,
                       fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.teal.shade800,
+                              const Color(0xFF004D40),
+                            ],
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.image_not_supported_outlined,
+                          size: 48,
+                          color: Colors.white.withOpacity(0.5),
+                        ),
+                      ),
                     )
                   else
                     Container(
@@ -262,16 +284,10 @@ class DetailsScreen extends ConsumerWidget {
 
                   // ── Info cards ─────────────────────────────────────────────
                   _InfoCard(
-                    icon: Icons.location_on,
-                    title: 'Localização',
+                    icon: Icons.location_on_outlined,
+                    title: 'Coordenadas',
                     content:
-                        'Lat: ${point.latitude.toStringAsFixed(4)}\nLon: ${point.longitude.toStringAsFixed(4)}',
-                  ),
-                  const SizedBox(height: 16),
-                  _InfoCard(
-                    icon: Icons.image_search,
-                    title: 'Marcador AR',
-                    content: point.imageReference,
+                        '${point.latitude.toStringAsFixed(4)} · ${point.longitude.toStringAsFixed(4)}',
                   ),
 
                   const SizedBox(height: 28),
@@ -329,21 +345,24 @@ class DetailsScreen extends ConsumerWidget {
 
                   const SizedBox(height: 16),
 
-                  // Botão voltar para AR
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton.icon(
+                    child: FilledButton.icon(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.camera_alt),
-                      label: const Text('Voltar para AR'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal,
-                        foregroundColor: Colors.white,
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      label: Text(
+                        'Continuar a explorar',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.accent,
+                        foregroundColor: const Color(0xFF1A1510),
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        textStyle: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16)),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
                     ),
                   ),
@@ -354,6 +373,7 @@ class DetailsScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

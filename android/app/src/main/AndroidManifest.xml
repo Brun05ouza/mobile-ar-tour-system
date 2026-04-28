@@ -35,6 +35,13 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Deep links / QR code: artour://hybrid, artour://tour, artour://ar, … -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="artour"/>
+            </intent-filter>
         </activity>
         <!-- Activity legada de Image Tracking (preservada sem alteração) -->
         <activity

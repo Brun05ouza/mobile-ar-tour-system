@@ -70,32 +70,32 @@ class RecognitionStatusBanner extends StatelessWidget {
       case RecognitionStatus.idle:
         return _BannerConfig(
           color: Colors.white54,
-          icon: Icons.image_search,
-          defaultMessage: 'Aponte a câmera para um local ou quadro',
+          icon: Icons.explore_outlined,
+          defaultMessage: 'Prima «Começar» para iniciar a descoberta.',
         );
       case RecognitionStatus.analyzing:
         return _BannerConfig(
-          color: Colors.tealAccent,
-          icon: Icons.radar,
-          defaultMessage: 'Analisando ambiente...',
+          color: const Color(0xFF4FD1C5),
+          icon: Icons.auto_awesome,
+          defaultMessage: 'A analisar o que tem à sua volta…',
         );
       case RecognitionStatus.suggestion:
         return _BannerConfig(
-          color: Colors.amberAccent,
-          icon: Icons.lightbulb_outline,
-          defaultMessage: 'Local identificado — confirme abaixo',
+          color: const Color(0xFFC9A87C),
+          icon: Icons.lightbulb_outline_rounded,
+          defaultMessage: 'Temos uma sugestão — confirme abaixo.',
         );
       case RecognitionStatus.confirmed:
         return _BannerConfig(
-          color: Colors.greenAccent,
-          icon: Icons.check_circle_outline,
-          defaultMessage: 'Local reconhecido!',
+          color: const Color(0xFF4FD1C5),
+          icon: Icons.verified_outlined,
+          defaultMessage: 'Local confirmado.',
         );
       case RecognitionStatus.lost:
         return _BannerConfig(
-          color: Colors.orangeAccent,
-          icon: Icons.visibility_off_outlined,
-          defaultMessage: 'Reconhecimento perdido — analisando novamente...',
+          color: const Color(0xFFB8B4AB),
+          icon: Icons.motion_photos_pause_outlined,
+          defaultMessage: 'A recalibrar…',
         );
     }
   }

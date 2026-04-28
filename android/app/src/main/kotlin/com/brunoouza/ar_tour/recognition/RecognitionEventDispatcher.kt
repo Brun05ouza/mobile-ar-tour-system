@@ -104,6 +104,15 @@ object RecognitionEventDispatcher {
         ))
     }
 
+    /** Sessão ARCore não pôde ser iniciada (FatalException, etc.). */
+    fun dispatchSessionFailed(message: String) {
+        send(mapOf(
+            "type" to RecognitionConstants.EVENT_SESSION_FAILED,
+            "message" to message
+        ))
+        Log.w(TAG, "Sessão AR falhou: $message")
+    }
+
     /** Informações de debug do pipeline (visível no RecognitionDebugPanel). */
     fun dispatchDebug(message: String, candidates: List<RecognitionCandidate> = emptyList()) {
         send(mapOf(

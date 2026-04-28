@@ -55,4 +55,6 @@ object RecognitionConstants {
     const val EVENT_LOST               = "onRecognitionLost"
     const val EVENT_DEBUG              = "onRecognitionDebugInfo"
     const val EVENT_LOCATION_UPDATE    = "onLocationUpdate"
+    /** Falha ao iniciar ou retomar sessão ARCore (ex.: sensores). */
+    const val EVENT_SESSION_FAILED     = "onArSessionFailed"
 }

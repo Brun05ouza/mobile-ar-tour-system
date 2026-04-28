@@ -27,6 +27,7 @@ class RecognitionChannel {
   static const String eventLost = 'onRecognitionLost';
   static const String eventDebug = 'onRecognitionDebugInfo';
   static const String eventLocationUpdate = 'onLocationUpdate';
+  static const String eventSessionFailed = 'onArSessionFailed';
 
   // ── Stream de eventos ───────────────────────────────────────────────────────
 

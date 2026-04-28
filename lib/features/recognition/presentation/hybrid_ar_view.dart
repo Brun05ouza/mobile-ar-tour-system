@@ -1,24 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 
+import '../../../app/theme/app_theme.dart';
 import '../../../presentation/ar/ar_overlay_card.dart';
 import '../../../presentation/details/details_screen.dart';
+import '../../../presentation/home/home_screen.dart';
 import '../data/recognition_notifier.dart';
 import '../domain/recognition_status.dart';
-import 'widgets/recognition_debug_panel.dart';
 import 'widgets/recognition_status_banner.dart';
 import 'widgets/recognition_suggestion_card.dart';
 
-/// Tela principal do sistema de reconhecimento híbrido AR.
-///
-/// Gerencia o ciclo de vida do pipeline (start/stop) e exibe os estados
-/// de reconhecimento usando widgets desacoplados.
-///
-/// Fluxo de estado:
-///   idle → analyzing → suggestion → confirmed
-///                    ↗ lost ──────────↗
-///
-/// Esta tela coexiste com o [ArView] legado — ambas funcionam independentemente.
 class HybridArView extends ConsumerStatefulWidget {
   const HybridArView({super.key});
 
@@ -37,7 +29,6 @@ class _HybridArViewState extends ConsumerState<HybridArView> {
 
   @override
   void dispose() {
-    // Para o pipeline ao sair da tela
     ref.read(recognitionProvider.notifier).stopRecognition();
     super.dispose();
   }
@@ -52,15 +43,12 @@ class _HybridArViewState extends ConsumerState<HybridArView> {
   Widget build(BuildContext context) {
     final state = ref.watch(recognitionProvider);
 
-    // Navega para DetailsScreen ao confirmar
     ref.listen(recognitionProvider, (prev, next) {
       if (next.status == RecognitionStatus.confirmed &&
           next.confirmedPoint != null &&
           prev?.status != RecognitionStatus.confirmed) {
         final point = next.confirmedPoint!;
-        // Pequeno delay para a animação do card ser visível
         Future.delayed(const Duration(milliseconds: 600), () {
-          // Verifica mounted antes de usar context ou ref
           if (!mounted) return;
           Navigator.push(
             context,
@@ -76,18 +64,37 @@ class _HybridArViewState extends ConsumerState<HybridArView> {
     });
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1117),
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('AR Híbrido'),
-        backgroundColor: const Color(0xFF0F1117),
-        foregroundColor: Colors.white,
+        title: Text(
+          'Descoberta guiada',
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: Colors.transparent,
+        foregroundColor: AppColors.textPrimary,
         elevation: 0,
+        leading: Navigator.of(context).canPop()
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.home_outlined),
+                tooltip: 'Início',
+                onPressed: () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    PageRouteBuilder<void>(
+                      pageBuilder: (_, __, ___) => const HomeScreen(),
+                      transitionDuration: const Duration(milliseconds: 350),
+                      transitionsBuilder: (_, anim, __, child) =>
+                          FadeTransition(opacity: anim, child: child),
+                    ),
+                    (_) => false,
+                  );
+                },
+              ),
         actions: [
-          // Botão de reiniciar
           if (state.status != RecognitionStatus.analyzing)
             IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: 'Reiniciar análise',
+              icon: const Icon(Icons.refresh_rounded),
+              tooltip: 'Recomeçar',
               onPressed: () {
                 ref.read(recognitionProvider.notifier).stopRecognition();
                 _started = false;
@@ -96,122 +103,107 @@ class _HybridArViewState extends ConsumerState<HybridArView> {
             ),
         ],
       ),
-      body: Stack(
-        children: [
-          // ── Conteúdo central ────────────────────────────────────────────────
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Ícone animado principal
-                  _StatusIcon(status: state.status),
-
-                  const SizedBox(height: 24),
-
-                  // Mensagem principal
-                  Text(
-                    _mainMessage(state.status),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 15,
-                      height: 1.5,
-                    ),
+      body: AppBackground(
+        child: SafeArea(
+          child: Stack(
+            children: [
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _StatusIcon(status: state.status),
+                      const SizedBox(height: 28),
+                      Text(
+                        _mainMessage(state.status),
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.plusJakartaSans(
+                          color: AppColors.textSecondary,
+                          fontSize: 16,
+                          height: 1.55,
+                        ),
+                      ),
+                      if (state.nearbyCandidates.isNotEmpty &&
+                          state.status == RecognitionStatus.analyzing) ...[
+                        const SizedBox(height: 14),
+                        Text(
+                          'Há locais do circuito próximos de si.',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: AppColors.teal.withValues(alpha: 0.85),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      if (state.status == RecognitionStatus.idle) ...[
+                        const SizedBox(height: 36),
+                        FilledButton.icon(
+                          onPressed: () {
+                            _started = false;
+                            _startRecognition();
+                          },
+                          icon: const Icon(Icons.play_circle_outline, size: 22),
+                          label: Text(
+                            'Começar',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.accent,
+                            foregroundColor: const Color(0xFF1A1510),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 28, vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-
-                  // Info de candidatos próximos
-                  if (state.nearbyCandidates.isNotEmpty &&
-                      state.status == RecognitionStatus.analyzing) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      '${state.nearbyCandidates.length} local(is) próximo(s) identificado(s)',
-                      style: const TextStyle(
-                        color: Colors.teal,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-
-                  // Botão de escanear manualmente (quando idle)
-                  if (state.status == RecognitionStatus.idle) ...[
-                    const SizedBox(height: 32),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        _started = false;
-                        _startRecognition();
-                      },
-                      icon: const Icon(Icons.camera_alt),
-                      label: const Text('Iniciar Reconhecimento'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 32, vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
-                      ),
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
-          ),
-
-          // ── Banner de status (topo) ─────────────────────────────────────────
-          Positioned(
-            top: 12,
-            left: 0,
-            right: 0,
-            child: RecognitionStatusBanner(
-              status: state.status,
-              message: state.lastDebugMessage.isNotEmpty &&
-                      _shouldShowDebugInBanner(state.status)
-                  ? ''
-                  : '',
-            ),
-          ),
-
-          // ── Card de sugestão (meio-baixo) ───────────────────────────────────
-          if (state.status == RecognitionStatus.suggestion &&
-              state.suggestedPoint != null)
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: RecognitionSuggestionCard(
-                point: state.suggestedPoint!,
-                confidence: state.recognitionConfidence,
-                onConfirm: () =>
-                    ref.read(recognitionProvider.notifier).confirmSuggestion(),
-                onDismiss: () =>
-                    ref.read(recognitionProvider.notifier).dismissSuggestion(),
+              Positioned(
+                top: 8,
+                left: 0,
+                right: 0,
+                child: RecognitionStatusBanner(
+                  status: state.status,
+                  message: '',
+                ),
               ),
-            ),
-
-          // ── Card confirmado (usa o ArOverlayCard existente) ─────────────────
-          if (state.status == RecognitionStatus.confirmed &&
-              state.confirmedPoint != null)
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: ArOverlayCard(
-                point: state.confirmedPoint!,
-                onClose: () =>
-                    ref.read(recognitionProvider.notifier).onRecognitionLost(),
-              ),
-            ),
-
-          // ── Debug panel (apenas em kDebugMode) ─────────────────────────────
-          Positioned(
-            top: 70,
-            left: 0,
-            right: 0,
-            child: RecognitionDebugPanel(state: state),
+              if (state.status == RecognitionStatus.suggestion &&
+                  state.suggestedPoint != null)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: RecognitionSuggestionCard(
+                    point: state.suggestedPoint!,
+                    confidence: state.recognitionConfidence,
+                    onConfirm: () =>
+                        ref.read(recognitionProvider.notifier).confirmSuggestion(),
+                    onDismiss: () =>
+                        ref.read(recognitionProvider.notifier).dismissSuggestion(),
+                  ),
+                ),
+              if (state.status == RecognitionStatus.confirmed &&
+                  state.confirmedPoint != null)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: ArOverlayCard(
+                    point: state.confirmedPoint!,
+                    onClose: () =>
+                        ref.read(recognitionProvider.notifier).onRecognitionLost(),
+                  ),
+                ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -219,23 +211,18 @@ class _HybridArViewState extends ConsumerState<HybridArView> {
   String _mainMessage(RecognitionStatus status) {
     switch (status) {
       case RecognitionStatus.idle:
-        return 'Aponte a câmera para um local ou quadro';
+        return 'Prima «Começar» para iniciar. Mantenha o telemóvel estável enquanto exploramos o espaço à sua volta.';
       case RecognitionStatus.analyzing:
-        return 'Analisando ambiente...';
+        return 'Um momento — estamos a preparar a melhor sugestão para onde está.';
       case RecognitionStatus.suggestion:
-        return 'Local identificado — confirme ou ignore abaixo';
+        return 'Confirme se reconhece o local sugerido ou peça outra sugestão.';
       case RecognitionStatus.confirmed:
-        return 'Local reconhecido!';
+        return 'Perfeito — este é o seu próximo destaque.';
       case RecognitionStatus.lost:
-        return 'Reconhecimento perdido — analisando novamente...';
+        return 'A voltar a analisar o ambiente…';
     }
   }
-
-  bool _shouldShowDebugInBanner(RecognitionStatus status) =>
-      status == RecognitionStatus.analyzing;
 }
-
-// ── Status Icon ───────────────────────────────────────────────────────────────
 
 class _StatusIcon extends StatelessWidget {
   final RecognitionStatus status;
@@ -247,38 +234,38 @@ class _StatusIcon extends StatelessWidget {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 400),
       child: switch (status) {
-        RecognitionStatus.analyzing => const SizedBox(
-            key: ValueKey('analyzing'),
-            width: 72,
-            height: 72,
+        RecognitionStatus.analyzing => SizedBox(
+            key: const ValueKey('analyzing'),
+            width: 88,
+            height: 88,
             child: CircularProgressIndicator(
-              color: Colors.teal,
-              strokeWidth: 3,
+              color: AppColors.accent,
+              strokeWidth: 2.5,
             ),
           ),
         RecognitionStatus.suggestion => Icon(
             key: const ValueKey('suggestion'),
-            Icons.lightbulb_outline,
-            size: 72,
-            color: Colors.amberAccent.withOpacity(0.8),
+            Icons.lightbulb_outline_rounded,
+            size: 88,
+            color: AppColors.accent.withValues(alpha: 0.95),
           ),
-        RecognitionStatus.confirmed => const Icon(
-            key: ValueKey('confirmed'),
-            Icons.check_circle_outline,
-            size: 72,
-            color: Colors.greenAccent,
+        RecognitionStatus.confirmed => Icon(
+            key: const ValueKey('confirmed'),
+            Icons.verified_outlined,
+            size: 88,
+            color: AppColors.teal.withValues(alpha: 0.95),
           ),
         RecognitionStatus.lost => Icon(
             key: const ValueKey('lost'),
-            Icons.visibility_off_outlined,
-            size: 72,
-            color: Colors.orangeAccent.withOpacity(0.7),
+            Icons.motion_photos_pause_outlined,
+            size: 88,
+            color: AppColors.textHint,
           ),
-        RecognitionStatus.idle => const Icon(
-            key: ValueKey('idle'),
-            Icons.image_search,
-            size: 72,
-            color: Colors.white24,
+        RecognitionStatus.idle => Icon(
+            key: const ValueKey('idle'),
+            Icons.explore_outlined,
+            size: 88,
+            color: AppColors.textHint,
           ),
       },
     );

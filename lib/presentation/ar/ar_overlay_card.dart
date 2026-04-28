@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../../app/theme/app_theme.dart';
 import '../../data/models/point_model.dart';
 import '../../data/providers/user_prefs_provider.dart';
 import '../details/details_screen.dart';
@@ -38,7 +41,6 @@ class _ArOverlayCardState extends ConsumerState<ArOverlayCard>
     _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _controller.forward();
 
-    // Marca automaticamente como visitado ao detectar pelo AR
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(visitedProvider.notifier).markVisited(widget.point.id);
     });
@@ -66,12 +68,14 @@ class _ArOverlayCardState extends ConsumerState<ArOverlayCard>
         child: Container(
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
           decoration: BoxDecoration(
-            color: const Color(0xFF0F1117).withOpacity(0.95),
+            color: AppColors.surfaceElevated.withValues(alpha: 0.96),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.teal.withOpacity(0.4)),
+            border: Border.all(
+              color: AppColors.accent.withValues(alpha: 0.45),
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.45),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
@@ -83,7 +87,6 @@ class _ArOverlayCardState extends ConsumerState<ArOverlayCard>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Header ──────────────────────────────────────────────────
                 Row(
                   children: [
                     ClipRRect(
@@ -94,17 +97,28 @@ class _ArOverlayCardState extends ConsumerState<ArOverlayCard>
                               width: 56,
                               height: 56,
                               fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                width: 56,
+                                height: 56,
+                                color: AppColors.accent.withValues(alpha: 0.15),
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  Icons.hide_image_outlined,
+                                  color: AppColors.accent.withValues(alpha: 0.75),
+                                  size: 26,
+                                ),
+                              ),
                             )
                           : Container(
                               width: 56,
                               height: 56,
                               decoration: BoxDecoration(
-                                color: Colors.teal.withOpacity(0.2),
+                                color: AppColors.accent.withValues(alpha: 0.18),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Icon(
-                                Icons.place,
-                                color: Colors.tealAccent,
+                              child: Icon(
+                                Icons.place_rounded,
+                                color: AppColors.accent,
                                 size: 28,
                               ),
                             ),
@@ -120,41 +134,49 @@ class _ArOverlayCardState extends ConsumerState<ArOverlayCard>
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: Colors.teal.withOpacity(0.15),
+                                  color: AppColors.accent.withValues(alpha: 0.18),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
-                                  'PONTO DETECTADO',
-                                  style: TextStyle(
-                                    color: Colors.tealAccent.withOpacity(0.9),
+                                  'LOCAL RECONHECIDO',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: AppColors.accent,
                                     fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 1.2,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.1,
                                   ),
                                 ),
                               ),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: Colors.green.withOpacity(0.15),
+                                  color: const Color(0xFF6BCB9E)
+                                      .withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: const Row(
+                                child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.check_circle,
-                                        size: 10, color: Colors.greenAccent),
-                                    SizedBox(width: 3),
+                                    Icon(
+                                      Icons.check_circle_rounded,
+                                      size: 10,
+                                      color: const Color(0xFFB8F0D8),
+                                    ),
+                                    const SizedBox(width: 3),
                                     Text(
                                       'VISITADO',
-                                      style: TextStyle(
-                                        color: Colors.greenAccent,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        color: const Color(0xFFB8F0D8),
                                         fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 1.0,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.9,
                                       ),
                                     ),
                                   ],
@@ -165,19 +187,19 @@ class _ArOverlayCardState extends ConsumerState<ArOverlayCard>
                           const SizedBox(height: 4),
                           Text(
                             widget.point.name,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: GoogleFonts.plusJakartaSans(
+                              color: AppColors.textPrimary,
                               fontSize: 17,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    // Botão favoritar direto do overlay
                     IconButton(
-                      onPressed: () =>
-                          ref.read(favoritesProvider.notifier).toggle(widget.point.id),
+                      onPressed: () => ref
+                          .read(favoritesProvider.notifier)
+                          .toggle(widget.point.id),
                       icon: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 250),
                         transitionBuilder: (child, anim) =>
@@ -185,7 +207,9 @@ class _ArOverlayCardState extends ConsumerState<ArOverlayCard>
                         child: Icon(
                           isFavorite ? Icons.favorite : Icons.favorite_border,
                           key: ValueKey(isFavorite),
-                          color: isFavorite ? Colors.pinkAccent : Colors.white38,
+                          color: isFavorite
+                              ? const Color(0xFFE8A0BF)
+                              : AppColors.textHint,
                           size: 22,
                         ),
                       ),
@@ -195,51 +219,56 @@ class _ArOverlayCardState extends ConsumerState<ArOverlayCard>
                     const SizedBox(width: 8),
                     IconButton(
                       onPressed: _fechar,
-                      icon: const Icon(Icons.close, color: Colors.white54, size: 20),
+                      icon: Icon(
+                        Icons.close_rounded,
+                        color: AppColors.textHint,
+                        size: 20,
+                      ),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 14),
-                Container(height: 1, color: Colors.white.withOpacity(0.08)),
+                Container(
+                  height: 1,
+                  color: AppColors.textPrimary.withValues(alpha: 0.08),
+                ),
                 const SizedBox(height: 14),
-
-                // ── Descrição ────────────────────────────────────────────────
                 Text(
                   widget.point.description,
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.75),
+                  style: GoogleFonts.plusJakartaSans(
+                    color: AppColors.textSecondary,
                     fontSize: 14,
                     height: 1.5,
                   ),
                 ),
-
                 const SizedBox(height: 18),
-
-                // ── Botão Detalhes ───────────────────────────────────────────
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton.icon(
+                  child: FilledButton.icon(
                     onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (_) => DetailsScreen(point: widget.point),
                       ),
                     ),
-                    icon: const Icon(Icons.info_outline, size: 18),
-                    label: const Text('Ver Detalhes'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
-                      foregroundColor: Colors.white,
+                    icon: const Icon(Icons.info_outline_rounded, size: 18),
+                    label: Text(
+                      'Ver detalhes',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.accent,
+                      foregroundColor: const Color(0xFF1A1510),
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      textStyle: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.bold),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                   ),
                 ),

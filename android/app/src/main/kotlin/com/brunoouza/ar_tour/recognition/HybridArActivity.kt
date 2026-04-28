@@ -7,9 +7,12 @@ import android.graphics.BitmapFactory
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.brunoouza.ar_tour.BackgroundRenderer
@@ -25,6 +28,11 @@ import com.google.ar.core.Config
 import com.google.ar.core.Session
 import com.google.ar.core.TrackingState
 import com.google.ar.core.exceptions.CameraNotAvailableException
+import com.google.ar.core.exceptions.FatalException
+import com.google.ar.core.exceptions.SessionPausedException
+import com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException
+import com.google.ar.core.exceptions.UnavailableException
+import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -65,6 +73,8 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             "cristo-redentor" to Pair("marker_02", 0.15f),
             "pao-de-acucar"   to Pair("marker_03", 0.15f)
         )
+
+        private const val MAX_FATAL_RESUME_RETRIES = 4
     }
 
     // ── UI ────────────────────────────────────────────────────────────────────
@@ -96,6 +106,13 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
 
     private var frameCount = 0
 
+    @Volatile
+    private var arSessionUpdatesEnabled = false
+
+    private var fatalResumeRetryCount = 0
+
+    private var arCoreInstallRequested = false
+
     // ── Todos os pontos carregados do JSON ────────────────────────────────────
     private var allPoints: List<PointData> = emptyList()
 
@@ -115,16 +132,50 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         loadPointsFromAssets()
         requestCameraPermissionIfNeeded()
         requestLocationPermissionIfNeeded()
+        fatalResumeRetryCount = 0
+        arCoreInstallRequested = false
     }
 
     override fun onResume() {
         super.onResume()
+        resumeArSessionPipeline()
+    }
 
+    /** Cria sessão (se preciso), session.resume(), GL e localização — chamado no onResume e após retry. */
+    private fun resumeArSessionPipeline() {
         // Não inicializa ARCore sem permissão de câmera
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
             != PackageManager.PERMISSION_GRANTED) {
             Log.w(TAG, "Câmera sem permissão — aguardando concessão")
             runOnUiThread { statusText.text = "Permissão de câmera necessária" }
+            return
+        }
+
+        try {
+            when (ArCoreApk.getInstance().requestInstall(this, arCoreInstallRequested)) {
+                ArCoreApk.InstallStatus.INSTALL_REQUESTED -> {
+                    arCoreInstallRequested = true
+                    runOnUiThread {
+                        statusText.text = "Instale ou atualize o Google Play Services para AR"
+                    }
+                    Log.d(TAG, "Pedido de instalação/atualização do ARCore")
+                    return
+                }
+                ArCoreApk.InstallStatus.INSTALLED -> { }
+            }
+        } catch (e: UnavailableDeviceNotCompatibleException) {
+            Log.e(TAG, "Dispositivo incompatível com ARCore", e)
+            runOnUiThread { statusText.text = "Este dispositivo não suporta ARCore." }
+            return
+        } catch (e: UnavailableUserDeclinedInstallationException) {
+            Toast.makeText(this, "ARCore é necessário para o reconhecimento híbrido.", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        } catch (e: UnavailableException) {
+            Log.e(TAG, "ARCore indisponível", e)
+            runOnUiThread {
+                statusText.text = "ARCore indisponível. Atualize o sistema e o Google Play Services."
+            }
             return
         }
 
@@ -141,6 +192,8 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                     augmentedImageDatabase = buildImageDatabase(newSession)
                     focusMode = Config.FocusMode.AUTO
                     updateMode = Config.UpdateMode.LATEST_CAMERA_IMAGE
+                    planeFindingMode = Config.PlaneFindingMode.DISABLED
+                    lightEstimationMode = Config.LightEstimationMode.DISABLED
                 }
                 newSession.configure(config)
                 session = newSession
@@ -156,11 +209,45 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
             session?.resume()
         } catch (e: CameraNotAvailableException) {
             Log.e(TAG, "Câmera não disponível ao resumir sessão", e)
+            try {
+                session?.close()
+            } catch (_: Exception) {
+            }
             session = null
             runOnUiThread { statusText.text = "Câmera não disponível — feche outros apps" }
             return
+        } catch (e: FatalException) {
+            Log.e(TAG, "ARCore FatalException (${fatalResumeRetryCount + 1}/$MAX_FATAL_RESUME_RETRIES)", e)
+            try {
+                session?.close()
+            } catch (_: Exception) {
+            }
+            session = null
+            if (fatalResumeRetryCount < MAX_FATAL_RESUME_RETRIES) {
+                fatalResumeRetryCount++
+                val delayMs = (350L shl (fatalResumeRetryCount - 1)).coerceAtMost(4000L)
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if (isFinishing || isDestroyed) return@postDelayed
+                    resumeArSessionPipeline()
+                }, delayMs)
+                return
+            }
+            runOnUiThread {
+                RecognitionEventDispatcher.dispatchSessionFailed(
+                    "ARCore não iniciou (sensores). Atualize o Google Play Services para AR e reinicie o telefone."
+                )
+                Toast.makeText(
+                    this,
+                    "ARCore não iniciou (sensores). Atualize \"Google Play Services para AR\", reinicie o telefone e feche outras apps de câmera.",
+                    Toast.LENGTH_LONG
+                ).show()
+                finish()
+            }
+            return
         }
 
+        fatalResumeRetryCount = 0
+        arSessionUpdatesEnabled = true
         surfaceView.onResume()
         displayRotationHelper.onResume()
         locationProvider.start()
@@ -169,15 +256,17 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     }
 
     override fun onPause() {
+        arSessionUpdatesEnabled = false
         super.onPause()
+        displayRotationHelper.onPause()
         surfaceView.onPause()
         session?.pause()
-        displayRotationHelper.onPause()
         locationProvider.stop()
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        arSessionUpdatesEnabled = false
         session?.close()
         session = null
         coroutineScope.cancel()
@@ -198,6 +287,7 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
 
     override fun onDrawFrame(gl: GL10?) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
+        if (!arSessionUpdatesEnabled) return
         val currentSession = session ?: return
 
         currentSession.setCameraTextureName(backgroundRenderer.textureId)
@@ -205,6 +295,8 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
 
         val frame = try {
             currentSession.update()
+        } catch (e: SessionPausedException) {
+            return
         } catch (e: CameraNotAvailableException) {
             Log.e(TAG, "Câmera não disponível no frame", e)
             return
@@ -475,8 +567,7 @@ class HybridArActivity : AppCompatActivity(), GLSurfaceView.Renderer {
                 if (grantResults.isNotEmpty() &&
                     grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     Log.d(TAG, "Permissão de câmera concedida — reiniciando AR")
-                    // Chama onResume manualmente para inicializar a sessão ARCore agora
-                    onResume()
+                    resumeArSessionPipeline()
                 } else {
                     Log.e(TAG, "Permissão de câmera negada — AR não pode funcionar")
                     runOnUiThread {
